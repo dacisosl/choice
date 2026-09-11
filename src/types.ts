@@ -155,6 +155,11 @@ export interface FirebaseConfig {
   collection?: string
   /** App Check: 등록된 사이트에서 온 요청만 Firestore에 통과시킴 */
   appCheck?: AppCheckConfig
+  /**
+   * 최초 관리자 구글 계정. 승인 없이도 관리자로 동작한다.
+   * Firestore 규칙의 isOwner() 이메일과 반드시 같아야 한다.
+   */
+  ownerEmail?: string
 }
 
 export interface AppCheckConfig {

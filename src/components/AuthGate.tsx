@@ -13,7 +13,7 @@ const GoogleMark = () => (
 
 /** 구글 로그인 + 관리자 승인 게이트. Firebase 설정이 없으면 그대로 통과한다. */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, enterLocalOnly } = useAuth()
+  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, enterLocalOnly, isOwner } = useAuth()
   const [name, setName] = useState('')
 
   if (!enabled) return <>{children}</>
@@ -81,8 +81,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
     )
   }
 
-  // 3) 승인 대기 / 거절
-  if (member.status !== 'approved') {
+  // 3) 승인 대기 / 거절 (최초 관리자 계정은 통과)
+  if (member.status !== 'approved' && !isOwner) {
     const rejected = member.status === 'rejected'
     return (
       <div className="auth-screen">

@@ -55,8 +55,13 @@ GitHub Pages는 정적 호스팅이므로 앱 자체에는 서버가 없습니�
 2. 프로젝트 설정 › 내 앱 › 웹 앱 추가 후 표시되는 `firebaseConfig` 의 `apiKey`, `authDomain`, `projectId`, `appId` 를 복사해 [`public/config.json`](./public/config.json) 의 `firebase` 항목에 넣습니다.
 3. **구글 로그인 켜기** — 빌드 › Authentication › Sign-in method 에서 **Google** 공급업체를 사용 설정합니다.
 4. **승인된 도메인 추가** — Authentication › 설정 › 승인된 도메인에 `dacisosl.github.io` 를 추가합니다. 이게 없으면 로그인 팝업이 실패합니다.
-5. **규칙 게시** — Firestore › 규칙 탭에 [`firebase/firestore.rules`](./firebase/firestore.rules) 의 표시된 구간을 붙여 넣고, `isOwner()` 의 이메일을 최초 관리자로 쓸 구글 계정으로 바꾼 뒤 게시합니다.
-6. push 하면 배포되고, 사이트에 접속해 구글 로그인 → 이름 입력 → 가입 신청을 합니다. `isOwner()` 로 지정한 계정은 신청 직후부터 관리자로 동작하므로, 관리 › 회원 관리에서 본인을 승인하고 다른 교사도 승인하면 됩니다.
+5. **최초 관리자 지정** — 같은 구글 계정 주소를 두 곳에 똑같이 적습니다.
+   - [`firebase/firestore.rules`](./firebase/firestore.rules) 의 `isOwner()` 안 이메일 (규칙에서의 권한)
+   - [`public/config.json`](./public/config.json) 의 `firebase.ownerEmail` (화면에서의 권한)
+6. **규칙 게시** — Firestore › 규칙 탭에 [`firebase/firestore.rules`](./firebase/firestore.rules) 의 표시된 구간을 붙여 넣고 게시합니다.
+7. push 하면 배포됩니다. 사이트에서 구글 로그인 → 이름 입력 → 가입 신청을 하면, 최초 관리자로 지정한 계정은 승인을 기다리지 않고 바로 관리 화면에 들어갑니다. 관리 › 회원 관리에서 본인을 승인해 두고, 이후 신청하는 교사들을 승인하면 됩니다.
+
+> `ownerEmail` 을 비워 두면 아무도 승인할 수 없습니다. 그 경우에는 Firebase 콘솔의 `choice_members` 컬렉션에서 본인 문서의 `status` 를 `approved`, `role` 을 `admin` 으로 직접 고쳐야 합니다.
 
 > **이미 쓰고 있는 Firebase 프로젝트를 재사용해도 됩니다.** 프로젝트 생성 한도에 걸렸다면 기존 프로젝트의 웹 앱 설정을 그대로 넣고, `collection` 을 다른 앱과 겹치지 않는 이름(기본 `choice_docs`)으로 두면 데이터가 분리됩니다. 규칙 파일에도 같은 컬렉션 이름을 허용해야 합니다.
 

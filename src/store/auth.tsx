@@ -22,6 +22,8 @@ export interface AuthContextValue {
   busy: boolean
   isApproved: boolean
   isAdmin: boolean
+  /** config의 ownerEmail과 같은 계정 — 승인 없이 관리자 */
+  isOwner: boolean
   /** 로그인을 건너뛴 예비 모드 */
   localOnly: boolean
   enterLocalOnly: () => void
@@ -253,6 +255,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [getFs],
   )
 
+  const ownerEmail = (config.firebase?.ownerEmail || '').trim().toLowerCase()
+  const isOwner = !!(enabled && ownerEmail && user?.email && user.email.toLowerCase() === ownerEmail)
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ready,
@@ -262,8 +267,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       member,
       error,
       busy,
-      isApproved: !enabled || member?.status === 'approved',
-      isAdmin: !enabled || (member?.status === 'approved' && member.role === 'admin'),
+      isApproved: !enabled || isOwner || member?.status === 'approved',
+      isAdmin: !enabled || isOwner || (member?.status === 'approved' && member.role === 'admin'),
+      isOwner,
       localOnly,
       enterLocalOnly: () => {
         writeLocalOnly(true)
@@ -283,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveMember,
       deleteMember,
     }),
-    [ready, enabled, config, user, member, error, busy, localOnly, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember],
+    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
