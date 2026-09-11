@@ -1,0 +1,144 @@
+export type GradeGroup = '1·2' | '3'
+export type Tone = 'formal' | 'plain' // formal: ~함/~됨 (개조식), plain: ~합니다 (서술식)
+
+export interface Subject {
+  id: string
+  name: string
+  gradeGroup: GradeGroup
+  subjectGroup: string
+  status: 'open' | 'closed'
+}
+
+export interface Publisher {
+  id: string
+  subjectId: string
+  name: string
+  order: number
+  price?: string
+  memo?: string
+}
+
+export interface Criterion {
+  id: string
+  /** null = 기본 템플릿 */
+  subjectId: string | null
+  area: string
+  text: string
+  points: number
+  locked: boolean
+  order: number
+}
+
+export interface OpinionOption {
+  id: string
+  scope: 'summary' | 'recommend'
+  category: string
+  label: string
+  /** null = 공통 */
+  subjectGroup: string | null
+  order: number
+  negative?: boolean
+}
+
+export interface CommitteeMember {
+  id: string
+  subjectId: string
+  teacherName: string
+  role: 'member' | 'lead' | 'compiler'
+}
+
+export interface Settings {
+  schoolName: string
+  year: number
+  tone: Tone
+  targetScores: { r1: number; r2: number; r3: number; other: number }
+  jitter: boolean
+  memberHeaderMode: 'name' | 'number'
+  printPersonalRecommend: boolean
+  averageDecimals: number
+  accessCode: string
+  compilerCode: string
+  adminCode: string
+  aiModel: string
+  aiFallbackModel: string
+  aiMaxPerDoc: number
+}
+
+export interface Master {
+  version: number
+  settings: Settings
+  subjects: Subject[]
+  publishers: Publisher[]
+  criteria: Criterion[]
+  opinionOptions: OpinionOption[]
+  committee: CommitteeMember[]
+  updatedAt: string
+}
+
+export type RecommendStrength = '적극 추천' | '추천' | '대안으로 추천'
+
+export interface RecommendItem {
+  rank: 1 | 2 | 3
+  pubId: string | null
+  keys: string[]
+  strength: RecommendStrength
+  text: string
+}
+
+export interface Evaluation {
+  id: string
+  subjectId: string
+  teacherName: string
+  pinHash?: string
+  ranks: (string | null)[] // 1,2,3순위 pubId
+  scores: Record<string, Record<string, number>> // pubId -> criterionId -> score
+  summaryKeys: string[]
+  summaryOpinion: string
+  recommend: RecommendItem[]
+  status: 'draft' | 'submitted'
+  aiCount: number
+  submittedAt?: string
+  updatedAt: string
+}
+
+export interface Person {
+  position: string
+  name: string
+}
+
+export interface SummaryRecommend {
+  rank: 1 | 2 | 3
+  pubId: string | null
+  text: string
+}
+
+export interface Summary {
+  id: string
+  subjectId: string
+  memberColumns: { teacherName: string; evaluationId: string }[]
+  matrix: Record<string, Record<string, number>> // pubId -> evaluationId -> total
+  writer: Person
+  checker: Person
+  recommendDoc: SummaryRecommend[]
+  recommendWriter: Person
+  recommendChecker: Person
+  status: 'draft' | 'finalized'
+  aiCount: number
+  finalizedAt?: string
+  updatedAt: string
+}
+
+export interface FirebaseConfig {
+  apiKey?: string
+  authDomain?: string
+  projectId?: string
+  appId?: string
+}
+
+export interface AppConfig {
+  schoolName?: string
+  year?: number
+  supabaseUrl?: string
+  supabaseAnonKey?: string
+  firebase?: FirebaseConfig
+}

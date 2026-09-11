@@ -1,0 +1,13 @@
+rules_version = '2';
+// 검·인정 교과용도서 선정 문서 작성 웹앱 — Firestore 규칙
+// 학교 내부용: 앱 진입은 접속 코드로 제어하고, DB는 docs 컬렉션만 읽기/쓰기 허용
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /docs/{docId} {
+      allow read, write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
