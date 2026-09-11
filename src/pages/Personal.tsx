@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Evaluation, RecommendItem, RecommendStrength } from '../types'
 import { uid } from '../seed'
 import { fmtDate, sha256, useAppData } from '../store/useAppData'
+import { useAuth } from '../store/auth'
 import { buildDraftScores, criteriaFor, publishersFor } from '../lib/scoring'
 import { aiGenerate, getApiKey, splitKeys } from '../lib/ai'
 import { downloadText } from '../lib/csv'
@@ -15,6 +16,7 @@ const STRENGTHS: RecommendStrength[] = ['적극 추천', '추천', '대안으로
 
 export function Personal() {
   const { master, evaluations, saveEvaluation, deleteEvaluation, mode, refresh } = useAppData()
+  const { enabled: authEnabled, user, member } = useAuth()
   const [step, setStep] = useState(0)
   const [teacherName, setTeacherName] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -25,6 +27,11 @@ export function Personal() {
   const [busy, setBusy] = useState(false)
   const [length, setLength] = useState<'short' | 'long'>('short')
   const saveTimer = useRef<number | null>(null)
+
+  // 로그인 방식에서는 승인된 계정 이름을 위원명으로 사용한다
+  useEffect(() => {
+    if (authEnabled && member?.displayName) setTeacherName(member.displayName)
+  }, [authEnabled, member])
 
   const subject = master.subjects.find((s) => s.id === (ev?.subjectId || subjectId))
   const publishers = useMemo(() => (subject ? publishersFor(master, subject.id) : []), [master, subject])
@@ -53,7 +60,9 @@ export function Personal() {
     [],
   )
 
-  const myDrafts = evaluations.filter((e) => teacherName.trim() && e.teacherName === teacherName.trim())
+  const myDrafts = evaluations.filter((e) =>
+    authEnabled && user ? e.uid === user.uid : !!teacherName.trim() && e.teacherName === teacherName.trim(),
+  )
 
   const createDraft = async () => {
     if (!teacherName.trim()) return setMsg({ type: 'warn', text: '교사명을 입력하세요.' })
@@ -81,7 +90,8 @@ export function Personal() {
     const next: Evaluation = {
       id: existing?.id || uid(),
       ...base,
-      pinHash: pin ? await sha256(pin) : undefined,
+      uid: user?.uid,
+      pinHash: !authEnabled && pin ? await sha256(pin) : undefined,
       scores,
       summaryKeys: [],
       summaryOpinion: '',
@@ -204,9 +214,16 @@ export function Personal() {
             <div className="row">
               <label className="field">
                 교사명(위원)
-                <input type="text" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="홍길동" />
+                <input
+                  type="text"
+                  value={teacherName}
+                  onChange={(e) => setTeacherName(e.target.value)}
+                  placeholder="홍길동"
+                  readOnly={authEnabled}
+                  title={authEnabled ? undefined : undefined}
+                />
               </label>
-              <label className="field">
+              <label className="field" hidden={authEnabled}>
                 PIN (선택, 본인 문서 보호)
                 <input type="password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="숫자 4자리" />
               </label>
@@ -258,8 +275,8 @@ export function Personal() {
           </div>
           <div className="card">
             <h2>내 문서 불러오기</h2>
-            {!teacherName.trim() && <p className="muted small">교사명을 입력하면 본인의 임시저장·제출 문서가 표시됩니다.</p>}
-            {teacherName.trim() && myDrafts.length === 0 && <p className="muted small">저장된 문서가 없습니다.</p>}
+            {!authEnabled && !teacherName.trim() && <p className="muted small">교사명을 입력하면 본인의 임시저장·제출 문서가 표시됩니다.</p>}
+            {(authEnabled || teacherName.trim()) && myDrafts.length === 0 && <p className="muted small">저장된 문서가 없습니다.</p>}
             {myDrafts.length > 0 && (
               <table className="data">
                 <thead>

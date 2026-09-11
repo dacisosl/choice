@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppConfig, Evaluation, Master, Summary } from '../types'
 import { seedMaster } from '../seed'
-import { createStore, loadConfig, LocalStore, type Store, type StorageMode } from './storage'
+import { createStore, LocalStore, type Store, type StorageMode } from './storage'
+import { useAuth } from './auth'
 
 export interface AppData {
   ready: boolean
@@ -15,6 +16,7 @@ export interface AppData {
   saveEvaluation: (e: Evaluation) => Promise<void>
   deleteEvaluation: (id: string) => Promise<void>
   saveSummary: (s: Summary) => Promise<void>
+  deleteSummary: (id: string) => Promise<void>
   refresh: () => Promise<void>
   resetMaster: () => Promise<void>
 }
@@ -22,11 +24,16 @@ export interface AppData {
 const Ctx = createContext<AppData | null>(null)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { ready: authReady, enabled: authEnabled, isApproved, localOnly, config: rawConfig } = useAuth()
+  // 예비 모드에서는 원격 저장소를 쓰지 않는다
+  const config = useMemo<AppConfig>(
+    () => (localOnly ? { ...rawConfig, firebase: undefined, supabaseUrl: '', supabaseAnonKey: '' } : rawConfig),
+    [localOnly, rawConfig],
+  )
   const storeRef = useRef<Store | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<StorageMode>('local')
-  const [config, setConfig] = useState<AppConfig>({})
   const [master, setMaster] = useState<Master>(() => seedMaster())
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [summaries, setSummaries] = useState<Summary[]>([])
@@ -35,7 +42,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     let m = await store.getMaster()
     if (!m) {
       m = seedMaster({ schoolName: cfg.schoolName, year: cfg.year })
-      await store.saveMaster(m)
+      // 마스터 생성 권한이 없는 일반 구성원일 수 있으므로 저장 실패는 넘어간다
+      try {
+        await store.saveMaster(m)
+      } catch {
+        /* 관리자가 최초 1회 생성 */
+      }
     }
     const [evs, sums] = await Promise.all([store.listEvaluations(), store.listSummaries()])
     setMaster(m)
@@ -44,23 +56,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // 로그인 방식일 때는 승인된 뒤에 데이터를 읽는다
+    if (!authReady) return
+    if (authEnabled && !isApproved) {
+      setReady(true)
+      return
+    }
     let cancelled = false
     ;(async () => {
       try {
-        const cfg = await loadConfig()
-        let store = await createStore(cfg)
+        let store = await createStore(config)
         if (cancelled) return
-        setConfig(cfg)
         try {
-          await loadAll(store, cfg)
+          await loadAll(store, config)
           setError(null)
         } catch (e) {
-          // 온라인 저장소 접근 실패(예: Firestore 규칙 미허용) → 데이터 유실 없이 로컬 모드로 전환
           if (store.mode === 'local') throw e
+          // 온라인 저장소 접근 실패(예: 규칙 미허용) → 데이터 유실 없이 로컬 모드로 전환
           store = new LocalStore()
-          await loadAll(store, cfg)
+          await loadAll(store, config)
           setError(
-            `온라인 저장소에 연결하지 못해 이 브라우저 저장 모드로 전환했습니다. Firestore 규칙에서 해당 컬렉션의 읽기·쓰기를 허용했는지 확인하세요. (${(e as Error).message})`,
+            `온라인 저장소에 연결하지 못해 이 브라우저 저장 모드로 전환했습니다. Firestore 규칙을 게시했는지 확인하세요. (${(e as Error).message})`,
           )
         }
         if (cancelled) return
@@ -75,7 +91,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [loadAll])
+  }, [authReady, authEnabled, isApproved, config, loadAll])
 
   const refresh = useCallback(async () => {
     const store = storeRef.current
@@ -127,6 +143,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     await storeRef.current?.saveSummary(next)
   }, [])
 
+  const deleteSummary = useCallback(async (id: string) => {
+    setSummaries((list) => list.filter((x) => x.id !== id))
+    await storeRef.current?.deleteSummary(id)
+  }, [])
+
   const resetMaster = useCallback(async () => {
     const m = seedMaster({ schoolName: config.schoolName, year: config.year })
     await saveMaster(m)
@@ -145,10 +166,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveEvaluation,
       deleteEvaluation,
       saveSummary,
+      deleteSummary,
       refresh,
       resetMaster,
     }),
-    [ready, error, mode, config, master, evaluations, summaries, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, refresh, resetMaster],
+    [ready, error, mode, config, master, evaluations, summaries, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, refresh, resetMaster],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
@@ -160,7 +182,7 @@ export function useAppData(): AppData {
   return v
 }
 
-// ───────────── 역할 잠금 (세션 단위) ─────────────
+// ───────────── 역할 잠금 (코드 방식, 로컬 모드 전용) ─────────────
 export type Role = 'teacher' | 'compiler' | 'admin'
 const ROLE_KEY = 'choice.roles'
 

@@ -5,9 +5,12 @@ import { fmtDate, useAppData } from '../store/useAppData'
 import { columnTotal, criteriaFor, publishersFor } from '../lib/scoring'
 import { getApiKey, setApiKey } from '../lib/ai'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
-import { getAppCheckState, getSupabaseOverride, setSupabaseOverride } from '../store/storage'
+import { getSupabaseOverride, setSupabaseOverride } from '../store/storage'
+import { getAppCheckState } from '../store/firebase'
+import { MembersTab } from './AdminMembers'
+import { SubmissionsTab } from './AdminSubmissions'
 
-const TABS = ['과목·출판사', '평가기준', '의견 선택지', '위원 명단', '설정·현황']
+const TABS = ['과목·출판사', '평가기준', '의견 선택지', '위원 명단', '회원 관리', '제출 관리', '설정·현황']
 
 export function Admin() {
   const [tab, setTab] = useState(0)
@@ -24,7 +27,9 @@ export function Admin() {
       {tab === 1 && <CriteriaTab />}
       {tab === 2 && <OptionsTab />}
       {tab === 3 && <CommitteeTab />}
-      {tab === 4 && <SettingsTab />}
+      {tab === 4 && <MembersTab />}
+      {tab === 5 && <SubmissionsTab />}
+      {tab === 6 && <SettingsTab />}
     </div>
   )
 }

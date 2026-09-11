@@ -1,4 +1,5 @@
 import type { AppConfig, Evaluation, FirebaseConfig, Master, Summary } from '../types'
+import { ensureFirebaseApp, hasFirebaseConfig } from './firebase'
 
 export type StorageMode = 'local' | 'supabase' | 'firebase'
 
@@ -11,6 +12,7 @@ export interface Store {
   deleteEvaluation(id: string): Promise<void>
   listSummaries(): Promise<Summary[]>
   saveSummary(s: Summary): Promise<void>
+  deleteSummary(id: string): Promise<void>
 }
 
 // ───────────── localStorage ─────────────
@@ -62,6 +64,9 @@ export class LocalStore implements Store {
     if (i >= 0) list[i] = s
     else list.push(s)
     lsSet(LS.summaries, list)
+  }
+  async deleteSummary(id: string) {
+    lsSet(LS.summaries, (await this.listSummaries()).filter((x) => x.id !== id))
   }
 }
 
@@ -116,43 +121,14 @@ export class SupabaseStore implements Store {
   async saveSummary(s: Summary) {
     await this.upsert(s.id, 'summary', s.subjectId, s)
   }
+  async deleteSummary(id: string) {
+    const { error } = await this.client.from(this.table).delete().eq('id', id)
+    if (error) throw new Error(error.message)
+  }
 }
 
 // ───────────── Firebase Firestore (docs 컬렉션) ─────────────
 type Firestore = import('firebase/firestore').Firestore
-type FirebaseApp = import('firebase/app').FirebaseApp
-
-let appCheckState: 'off' | 'on' | 'failed' = 'off'
-/** App Check 활성 여부 (관리 화면 표시용) */
-export function getAppCheckState() {
-  return appCheckState
-}
-
-const isLocalHost = () => ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
-
-/**
- * App Check 초기화. 사이트 키가 없으면 건너뛴다.
- * 다른 Firebase 서비스를 쓰기 전에 호출해야 하며, 실패해도 앱을 멈추지 않는다.
- */
-async function initAppCheck(app: FirebaseApp, cfg: FirebaseConfig): Promise<void> {
-  const ac = cfg.appCheck
-  if (!ac?.siteKey || appCheckState !== 'off') return
-  try {
-    const m = await import('firebase/app-check')
-    if (isLocalHost()) {
-      // 로컬 개발: 콘솔에 등록한 디버그 토큰 사용. true면 콘솔 로그에 토큰이 출력된다.
-      ;(self as unknown as Record<string, unknown>).FIREBASE_APPCHECK_DEBUG_TOKEN = ac.debugToken || true
-    }
-    m.initializeAppCheck(app, {
-      provider: ac.provider === 'v3' ? new m.ReCaptchaV3Provider(ac.siteKey) : new m.ReCaptchaEnterpriseProvider(ac.siteKey),
-      isTokenAutoRefreshEnabled: true,
-    })
-    appCheckState = 'on'
-  } catch (e) {
-    appCheckState = 'failed'
-    console.warn('App Check 초기화 실패', e)
-  }
-}
 
 export class FirestoreStore implements Store {
   mode: StorageMode = 'firebase'
@@ -163,9 +139,7 @@ export class FirestoreStore implements Store {
   ) {}
 
   static async create(cfg: FirebaseConfig): Promise<FirestoreStore> {
-    const [{ initializeApp, getApps }, fs] = await Promise.all([import('firebase/app'), import('firebase/firestore')])
-    const app = getApps()[0] || initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId, appId: cfg.appId })
-    await initAppCheck(app, cfg)
+    const [app, fs] = await Promise.all([ensureFirebaseApp(cfg), import('firebase/firestore')])
     return new FirestoreStore(fs.getFirestore(app), fs, cfg.collection || 'docs')
   }
 
@@ -202,6 +176,9 @@ export class FirestoreStore implements Store {
   async saveSummary(s: Summary) {
     await this.upsert(s.id, 'summary', s.subjectId, s)
   }
+  async deleteSummary(id: string) {
+    await this.fs.deleteDoc(this.fs.doc(this.db, this.col, id))
+  }
 }
 
 export async function loadConfig(): Promise<AppConfig> {
@@ -236,7 +213,7 @@ export async function createStore(cfg: AppConfig): Promise<Store> {
     }
   }
   const fb = cfg.firebase
-  if (fb && fb.apiKey && fb.projectId) {
+  if (hasFirebaseConfig(fb)) {
     try {
       return await FirestoreStore.create(fb)
     } catch (e) {

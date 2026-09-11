@@ -260,6 +260,19 @@ input[type='checkbox'] { accent-color: var(--navy); }
 .gate .card > h2 { justify-content: center; font-size: 20px; }
 .gate input { text-align: center; letter-spacing: 0.2em; font-size: 18px; height: 48px; border-radius: 999px; }
 
+
+/* 로그인·승인 화면 */
+.auth-screen { max-width: 440px; margin: 48px auto; }
+.auth-screen .card { background: #fff; padding: 32px 28px; text-align: center; }
+.auth-screen .card > h2 { justify-content: center; font-size: 20px; }
+.auth-screen .card > h2::before { display: none; }
+.btn.google { width: 100%; background: #fff; border-color: var(--line); font-weight: 600; margin-top: 18px; }
+.btn.google:hover { background: var(--sur-hover); }
+.who { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; padding: 6px 12px; border-radius: 999px; background: var(--sur-hover); font-size: 13px; color: var(--text-2); }
+.avatar { width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto; }
+.topbar .who { margin-top: 0; height: 32px; }
+.topbar .who strong { color: var(--text); font-weight: 600; }
+
 @media (max-width: 900px) {
   .topbar .center { display: none; }
 }

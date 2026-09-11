@@ -85,10 +85,28 @@ export interface RecommendItem {
   text: string
 }
 
+export type MemberStatus = 'pending' | 'approved' | 'rejected'
+export type MemberRole = 'member' | 'admin'
+
+/** 구글 로그인 사용자. 관리자가 승인해야 앱을 쓸 수 있다. */
+export interface Member {
+  uid: string
+  email: string
+  /** 로그인 후 본인이 입력한 이름. 서식의 위원명으로 쓰인다. */
+  displayName: string
+  role: MemberRole
+  status: MemberStatus
+  requestedAt: string
+  decidedAt?: string
+  note?: string
+}
+
 export interface Evaluation {
   id: string
   subjectId: string
   teacherName: string
+  /** 로그인 모드에서 제출자 식별 (규칙에서 본인 문서만 수정 허용) */
+  uid?: string
   pinHash?: string
   ranks: (string | null)[] // 1,2,3순위 pubId
   scores: Record<string, Record<string, number>> // pubId -> criterionId -> score

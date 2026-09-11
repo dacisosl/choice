@@ -4,23 +4,74 @@ rules_version = '2';
 // 검·인정 교과용도서 선정 문서 작성 웹앱 — Firestore 규칙
 //
 // ⚠ 기존 Firebase 프로젝트를 재사용하는 경우 이 파일을 통째로 붙여 넣지 마세요.
-//    아래 "추가할 블록"만 기존 규칙의 match /databases/{database}/documents { … } 안에
-//    복사해 넣어야 다른 앱의 컬렉션이 막히지 않습니다.
+//    아래 function 선언과 match 블록 두 개만 기존 규칙의
+//    match /databases/{database}/documents { … } 안에 복사해 넣어야
+//    다른 앱의 컬렉션이 막히지 않습니다.
+//
+// ⚠ isOwner() 의 이메일을 최초 관리자로 쓸 본인 구글 계정으로 반드시 바꾸세요.
+//    이 계정은 명단에 없어도 항상 관리자로 인정되어, 승인 권한을 잃는 사고를 막아 줍니다.
 //
 // 컬렉션 이름은 public/config.json 의 firebase.collection 과 같아야 합니다. (기본 choice_docs)
 // ─────────────────────────────────────────────────────────────
 
-// ── 추가할 블록 (기존 프로젝트 재사용 시 이 3줄만 복사) ──
-//     match /choice_docs/{docId} {
-//       allow read, write: if true;
-//     }
-
-// ── 아래는 이 앱 전용으로 새 프로젝트를 만들었을 때 쓰는 전체 규칙 ──
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /choice_docs/{docId} {
-      allow read, write: if true;
+
+    // ── 여기부터 ────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
     }
+    // 최초 관리자 (본인 구글 계정 이메일로 교체)
+    function isOwner() {
+      return isSignedIn() && request.auth.token.email == 'OWNER@EXAMPLE.COM';
+    }
+    function memberPath() {
+      return /databases/$(database)/documents/choice_members/$(request.auth.uid);
+    }
+    function memberData() {
+      return get(memberPath()).data;
+    }
+    function isApproved() {
+      return isSignedIn() && exists(memberPath()) && memberData().status == 'approved';
+    }
+    function isAdmin() {
+      return isOwner() || (isApproved() && memberData().role == 'admin');
+    }
+    // 마스터 데이터는 관리자만, 개인 제출본은 본인만, 총괄표는 승인된 구성원이 작성
+    function canWrite(d) {
+      return isAdmin()
+        || d.kind == 'summary'
+        || (d.kind == 'evaluation' && d.data.uid == request.auth.uid);
+    }
+
+    // 구성원 명단: 본인 문서는 스스로 만들되 대기 상태로만, 승인·권한 변경은 관리자만
+    match /choice_members/{uid} {
+      allow get: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn()
+                    && request.auth.uid == uid
+                    && request.resource.data.uid == uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.role == 'member';
+      allow update: if isAdmin()
+                    || (isSignedIn()
+                        && request.auth.uid == uid
+                        && request.resource.data.status == resource.data.status
+                        && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // 앱 데이터: 승인된 구성원만 읽고, 쓰기는 위 canWrite 규칙을 따른다
+    match /choice_docs/{docId} {
+      allow read: if isApproved();
+      allow create: if isApproved() && canWrite(request.resource.data);
+      allow update: if isApproved() && canWrite(request.resource.data) && canWrite(resource.data);
+      allow delete: if isApproved() && canWrite(resource.data);
+    }
+    // ── 여기까지 ────────────────────────────────────────────
+
+    // 아래 한 줄은 이 앱 전용 새 프로젝트에서만 사용하세요.
+    // 기존 프로젝트에 붙여 넣으면 다른 앱의 컬렉션이 모두 막힙니다.
     match /{document=**} {
       allow read, write: if false;
     }
