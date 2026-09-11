@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppConfig, Evaluation, Master, Summary } from '../types'
 import { seedMaster } from '../seed'
-import { createStore, loadConfig, type Store, type StorageMode } from './storage'
+import { createStore, loadConfig, LocalStore, type Store, type StorageMode } from './storage'
 
 export interface AppData {
   ready: boolean
@@ -48,13 +48,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     ;(async () => {
       try {
         const cfg = await loadConfig()
-        const store = await createStore(cfg)
+        let store = await createStore(cfg)
+        if (cancelled) return
+        setConfig(cfg)
+        try {
+          await loadAll(store, cfg)
+          setError(null)
+        } catch (e) {
+          // 온라인 저장소 접근 실패(예: Firestore 규칙 미허용) → 데이터 유실 없이 로컬 모드로 전환
+          if (store.mode === 'local') throw e
+          store = new LocalStore()
+          await loadAll(store, cfg)
+          setError(
+            `온라인 저장소에 연결하지 못해 이 브라우저 저장 모드로 전환했습니다. Firestore 규칙에서 해당 컬렉션의 읽기·쓰기를 허용했는지 확인하세요. (${(e as Error).message})`,
+          )
+        }
         if (cancelled) return
         storeRef.current = store
-        setConfig(cfg)
         setMode(store.mode)
-        await loadAll(store, cfg)
-        setError(null)
       } catch (e) {
         setError(`데이터 불러오기 실패: ${(e as Error).message}`)
       } finally {
