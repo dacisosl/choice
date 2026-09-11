@@ -77,6 +77,28 @@ function SubjectsTab() {
     }
     save({ ...master, publishers: [...master.publishers, ...add] }, `${add.length}개 출판사를 추가했습니다.`)
   }
+  /** 기능을 둘러볼 수 있게 '테스트' 과목과 출판사 5곳을 넣는다 */
+  const addDemo = () => {
+    const DEMO = '테스트'
+    if (!confirm(`데모용 과목 "${DEMO}"과 출판사 5곳(출판사A~E)을 넣을까요? 이미 있으면 출판사를 다시 채웁니다.`)) return
+    let subjects = master.subjects
+    let demo = subjects.find((x) => x.name === DEMO)
+    if (!demo) {
+      demo = { id: uid(), name: DEMO, gradeGroup: '3', subjectGroup: '데모', status: 'open' }
+      subjects = [...subjects, demo]
+    } else {
+      const id = demo.id
+      subjects = subjects.map((x) => (x.id === id ? { ...x, status: 'open' as const } : x))
+    }
+    const sid = demo.id
+    const publishers = master.publishers.filter((p) => p.subjectId !== sid)
+    ;['A', 'B', 'C', 'D', 'E'].forEach((L, i) =>
+      publishers.push({ id: uid(), subjectId: sid, name: `출판사${L}`, order: i + 1, price: String(12000 + i * 500) }),
+    )
+    save({ ...master, subjects, publishers }, `데모 과목 "${DEMO}"과 출판사 5곳을 넣었습니다. 개인서류 작성에서 바로 시험해 보세요.`)
+    setSel(sid)
+  }
+
   const importCsv = async (file: File | null, kind: 'subjects' | 'publishers') => {
     if (!file) return
     const rows = parseCsv(await readFileText(file))
@@ -130,6 +152,9 @@ function SubjectsTab() {
               과목 CSV 업로드 (학년,교과,과목명)
               <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={(e) => importCsv(e.target.files?.[0] || null, 'subjects')} />
             </label>
+            <button className="btn sm soft" onClick={addDemo}>
+              데모 과목 만들기 (테스트 + 출판사A~E)
+            </button>
             <button className="btn sm" onClick={() => fillSample(true)}>
               전 과목 예시 출판사 채우기(테스트)
             </button>
@@ -173,6 +198,9 @@ function SubjectsTab() {
               </tbody>
             </table>
           </div>
+          <p className="note">
+            데모 자료로 시험한 뒤에는 관리 › 제출 관리에서 테스트 제출본을 지우고, 위 표에서 "테스트" 과목을 삭제하면 깨끗하게 정리됩니다.
+          </p>
           <div className="row" style={{ marginTop: 10 }}>
             <select value={newGrade} onChange={(e) => setNewGrade(e.target.value as '1·2' | '3')} style={{ flex: '0 0 80px' }}>
               <option value="1·2">1·2</option>
