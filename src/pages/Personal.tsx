@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Evaluation, RecommendItem, RecommendStrength } from '../types'
 import { uid } from '../seed'
-import { fmtDate, sha256, useAppData } from '../store/useAppData'
+import { fmtDate, useAppData } from '../store/useAppData'
 import { useAuth } from '../store/auth'
 import { buildDraftScores, criteriaFor, publishersFor } from '../lib/scoring'
 import { aiGenerate, getApiKey, splitKeys } from '../lib/ai'
@@ -21,7 +21,6 @@ export function Personal() {
   const [teacherName, setTeacherName] = useState('')
   const [subjectId, setSubjectId] = useState('')
   const [ranks, setRanks] = useState<(string | null)[]>([null, null, null])
-  const [pin, setPin] = useState('')
   const [ev, setEv] = useState<Evaluation | null>(null)
   const [msg, setMsg] = useState<{ type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -91,7 +90,6 @@ export function Personal() {
       id: existing?.id || uid(),
       ...base,
       uid: user?.uid,
-      pinHash: !authEnabled && pin ? await sha256(pin) : undefined,
       scores,
       summaryKeys: [],
       summaryOpinion: '',
@@ -107,11 +105,6 @@ export function Personal() {
   }
 
   const loadDraft = async (e: Evaluation) => {
-    if (e.pinHash) {
-      const p = prompt('이 문서는 PIN으로 보호되어 있습니다. PIN을 입력하세요.')
-      if (p === null) return
-      if ((await sha256(p)) !== e.pinHash) return setMsg({ type: 'error', text: 'PIN이 일치하지 않습니다.' })
-    }
     setEv(e)
     setSubjectId(e.subjectId)
     setRanks(e.ranks)
@@ -211,23 +204,18 @@ export function Personal() {
         <div className="grid2">
           <div className="card">
             <h2>기본정보</h2>
-            <div className="row">
-              <label className="field">
-                교사명(위원)
-                <input
-                  type="text"
-                  value={teacherName}
-                  onChange={(e) => setTeacherName(e.target.value)}
-                  placeholder="홍길동"
-                  readOnly={authEnabled}
-                  title={authEnabled ? undefined : undefined}
-                />
-              </label>
-              <label className="field" hidden={authEnabled}>
-                PIN (선택, 본인 문서 보호)
-                <input type="password" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="숫자 4자리" />
-              </label>
-            </div>
+            <label className="field">
+              교사명(위원)
+              <input
+                type="text"
+                value={teacherName}
+                onChange={(e) => setTeacherName(e.target.value)}
+                placeholder="홍길동"
+                readOnly={authEnabled}
+                title={authEnabled ? '승인된 계정 이름이 위원명으로 사용됩니다.' : undefined}
+              />
+            </label>
+            {authEnabled && <p className="note" style={{ marginTop: 6 }}>로그인한 계정의 승인된 이름이 위원명으로 사용됩니다.</p>}
             <label className="field" style={{ marginTop: 10 }}>
               과목
               <SubjectSelect subjects={master.subjects} value={subjectId} onChange={(id) => { setSubjectId(id); setRanks([null, null, null]) }} />

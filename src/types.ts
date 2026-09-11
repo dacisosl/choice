@@ -107,7 +107,6 @@ export interface Evaluation {
   teacherName: string
   /** 로그인 모드에서 제출자 식별 (규칙에서 본인 문서만 수정 허용) */
   uid?: string
-  pinHash?: string
   ranks: (string | null)[] // 1,2,3순위 pubId
   scores: Record<string, Record<string, number>> // pubId -> criterionId -> score
   summaryKeys: string[]

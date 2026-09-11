@@ -19,7 +19,7 @@ const BookIcon = () => (
 
 function Shell() {
   const { ready, error, master, mode } = useAppData()
-  const { enabled: authEnabled, user, member, isAdmin, signOutUser, signIn, busy, localOnly, exitLocalOnly, pendingCount } = useAuth()
+  const { enabled: authEnabled, user, member, isAdmin, signOutUser, signIn, busy, pendingCount } = useAuth()
   const [route, go] = useHashRoute()
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   const s = master.settings
@@ -62,11 +62,6 @@ function Shell() {
               <strong>{member.displayName}</strong>
               {isAdmin && <span className="badge info">관리자</span>}
             </span>
-          )}
-          {localOnly && (
-            <button className="btn sm" onClick={exitLocalOnly}>
-              로그인하기
-            </button>
           )}
           {authEnabled ? (
             user ? (

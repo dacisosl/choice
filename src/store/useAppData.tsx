@@ -24,12 +24,7 @@ export interface AppData {
 const Ctx = createContext<AppData | null>(null)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { ready: authReady, enabled: authEnabled, isApproved, localOnly, config: rawConfig } = useAuth()
-  // 예비 모드에서는 원격 저장소를 쓰지 않는다
-  const config = useMemo<AppConfig>(
-    () => (localOnly ? { ...rawConfig, firebase: undefined, supabaseUrl: '', supabaseAnonKey: '' } : rawConfig),
-    [localOnly, rawConfig],
-  )
+  const { ready: authReady, enabled: authEnabled, isApproved, config } = useAuth()
   const storeRef = useRef<Store | null>(null)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -214,13 +209,6 @@ export function useHashRoute(): [string, (h: string) => void] {
     location.hash = h ? `#/${h}` : ''
   }, [])
   return [hash, go]
-}
-
-export async function sha256(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
 }
 
 export function fmtDate(iso?: string): string {

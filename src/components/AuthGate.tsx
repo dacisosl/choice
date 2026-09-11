@@ -13,7 +13,7 @@ const GoogleMark = () => (
 
 /** 구글 로그인 + 관리자 승인 게이트. Firebase 설정이 없으면 그대로 통과한다. */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, enterLocalOnly, isOwner, ownerEmail } = useAuth()
+  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, isOwner, ownerEmail } = useAuth()
   const [name, setName] = useState('')
 
   if (!enabled) return <>{children}</>
@@ -33,14 +33,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
             {busy ? '진행 중…' : '구글 계정으로 로그인'}
           </button>
           {error && <div className="alert error" style={{ marginTop: 16 }}>{error}</div>}
-          <p className="small" style={{ marginTop: 18, marginBottom: 0 }}>
-            <button className="btn sm" onClick={enterLocalOnly}>
-              로그인 없이 이 브라우저에서만 사용
-            </button>
-          </p>
-          <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>
-            작성과 인쇄는 되지만 다른 교사와 공유되지 않습니다.
-          </p>
         </div>
       </div>
     )

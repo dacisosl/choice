@@ -26,10 +26,6 @@ export interface AuthContextValue {
   isOwner: boolean
   /** config에 설정된 최초 관리자 주소 (진단 표시용) */
   ownerEmail: string
-  /** 로그인을 건너뛴 예비 모드 */
-  localOnly: boolean
-  enterLocalOnly: () => void
-  exitLocalOnly: () => void
   signIn: () => Promise<void>
   signOutUser: () => Promise<void>
   /** 최초 로그인 후 이름을 정해 가입 신청 */
@@ -46,24 +42,6 @@ export interface AuthContextValue {
 const Ctx = createContext<AuthContextValue | null>(null)
 
 type Fs = typeof import('firebase/firestore')
-
-/** 로그인을 건너뛰고 이 브라우저에만 저장하는 예비 모드 (Firebase 설정 전·장애 시) */
-const LOCAL_ONLY_KEY = 'choice.localOnly'
-function readLocalOnly(): boolean {
-  try {
-    return localStorage.getItem(LOCAL_ONLY_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-function writeLocalOnly(v: boolean): void {
-  try {
-    if (v) localStorage.setItem(LOCAL_ONLY_KEY, '1')
-    else localStorage.removeItem(LOCAL_ONLY_KEY)
-  } catch {
-    /* ignore */
-  }
-}
 
 /**
  * 최초 관리자(ownerEmail) 계정이면 명단 문서를 승인·관리자 상태로 맞춘다.
@@ -109,7 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [member, setMember] = useState<Member | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [localOnly, setLocalOnly] = useState(readLocalOnly)
   const [pendingCount, setPendingCount] = useState(0)
   const fsRef = useRef<{ fs: Fs; db: import('firebase/firestore').Firestore } | null>(null)
 
@@ -138,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cfg = await loadConfig()
       if (cancelled) return
       setConfig(cfg)
-      if (!hasFirebaseConfig(cfg.firebase) || readLocalOnly()) {
+      if (!hasFirebaseConfig(cfg.firebase)) {
         setEnabled(false)
         setReady(true)
         return
@@ -328,17 +305,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: !enabled || isOwner || (member?.status === 'approved' && member.role === 'admin'),
       isOwner,
       ownerEmail,
-      localOnly,
-      enterLocalOnly: () => {
-        writeLocalOnly(true)
-        setLocalOnly(true)
-        setEnabled(false)
-      },
-      exitLocalOnly: () => {
-        writeLocalOnly(false)
-        setLocalOnly(false)
-        location.reload()
-      },
       signIn,
       signOutUser,
       submitProfile,
@@ -349,7 +315,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pendingCount,
       refreshPending,
     }),
-    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember, pendingCount, refreshPending],
+    [ready, enabled, config, user, member, error, busy, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember, pendingCount, refreshPending],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
