@@ -3,11 +3,17 @@ import { AuthProvider, useAuth } from './store/auth'
 import { AuthGate } from './components/AuthGate'
 import { Gate } from './components/Gate'
 import { Start } from './pages/Start'
+import { Guide } from './pages/Guide'
 import { Personal } from './pages/Personal'
 import { Compile } from './pages/Compile'
 import { Admin } from './pages/Admin'
 
-const ROUTE_LABEL: Record<string, string> = { personal: '개인서류 작성', compile: '평가총괄표 작성', admin: '관리' }
+const BookIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 6.5c-1.6-1.4-3.8-2-6.5-2H3v13h2.5c2.7 0 4.9.6 6.5 2 1.6-1.4 3.8-2 6.5-2H21v-13h-2.5c-2.7 0-4.9.6-6.5 2Z" />
+    <path d="M12 6.5v13" />
+  </svg>
+)
 
 function Shell() {
   const { ready, error, master, mode } = useAppData()
@@ -15,50 +21,48 @@ function Shell() {
   const [route, go] = useHashRoute()
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   const s = master.settings
+  const nav = (key: string, label: string, optional = false) => (
+    <button className={`${route === key ? 'active' : ''} ${optional ? 'optional' : ''}`} onClick={() => go(key)}>
+      {label}
+    </button>
+  )
   return (
     <div className="app">
       <header className="topbar no-print">
         <div className="brand" onClick={() => go('')}>
-          <span className="logo-mark">選</span>
+          <BookIcon />
           <span>
-            교과서 <strong>선정도우미</strong>
-            <span className="suffix">_{s.year}</span>
+            교과서 선정 도우미<span className="suffix">{s.year}</span>
           </span>
         </div>
-        <div className="center">
-          {route && (
-            <span className="ctx-chip">
-              {s.year}학년도 <span className="dot">·</span> {s.schoolName} <span className="dot">·</span> <span className="live">{ROUTE_LABEL[route] || route}</span>
-            </span>
-          )}
-        </div>
+        <nav>
+          {nav('guide', '이용 안내')}
+          {nav('personal', '내 문서')}
+          {nav('compile', '총괄표', true)}
+          {(!authEnabled || isAdmin) && nav('admin', '관리', true)}
+        </nav>
         <div className="meta">
           <span className={`badge ${mode !== 'local' ? 'ok' : 'warn'}`}>{mode === 'local' ? '브라우저 저장' : '온라인 공유'}</span>
           {authEnabled && member && (
             <span className="who">
               {user?.photoURL && <img className="avatar" src={user.photoURL} alt="" />}
               <strong>{member.displayName}</strong>
-              {member.role === 'admin' && <span className="badge info">관리자</span>}
+              {isAdmin && <span className="badge info">관리자</span>}
             </span>
           )}
-          {route && (
-            <button className="btn" onClick={() => go('')}>
-              처음으로
-            </button>
-          )}
           {localOnly && (
-            <button className="btn" onClick={exitLocalOnly}>
+            <button className="btn sm" onClick={exitLocalOnly}>
               로그인하기
             </button>
           )}
           {authEnabled ? (
-            <button className="btn" onClick={signOutUser}>
+            <button className="btn sm ghost" onClick={signOutUser}>
               로그아웃
             </button>
           ) : (
             route && (
               <button
-                className="btn"
+                className="btn sm ghost"
                 onClick={() => {
                   lockAll()
                   go('')
@@ -72,6 +76,7 @@ function Shell() {
       </header>
       {error && <div className="alert error no-print">{error}</div>}
       {route === '' && <Start go={go} />}
+      {route === 'guide' && <Guide go={go} />}
       {route === 'personal' &&
         (authEnabled ? (
           <Personal />

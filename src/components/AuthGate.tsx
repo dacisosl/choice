@@ -106,7 +106,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </div>
           <p className="muted small" style={{ marginTop: 10 }}>신청 {fmtDate(member.requestedAt)}</p>
           {rejected && member.note && <div className="alert warn" style={{ marginTop: 12 }}>{member.note}</div>}
-          <details className="diag">
+          <details className="diag-box">
             <summary>관리자인데 이 화면이 보이나요?</summary>
             <div>
               로그인한 계정 <b>{user.email}</b>
