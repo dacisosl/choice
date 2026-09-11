@@ -5,7 +5,7 @@ import { fmtDate } from '../store/useAppData'
 
 /** 관리 › 회원 관리 — 구글 로그인 계정 승인·권한 */
 export function MembersTab() {
-  const { enabled, user, listMembers, saveMember, deleteMember } = useAuth()
+  const { enabled, user, listMembers, saveMember, deleteMember, refreshPending } = useAuth()
   const [rows, setRows] = useState<Member[]>([])
   const [msg, setMsg] = useState<{ type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -33,6 +33,7 @@ export function MembersTab() {
       const next: Member = { ...m, ...patch, decidedAt: new Date().toISOString() }
       await saveMember(next)
       setRows((list) => list.map((x) => (x.uid === m.uid ? next : x)))
+      refreshPending()
       setMsg({ type: 'ok', text })
     } catch (e) {
       setMsg({ type: 'error', text: `변경 실패: ${(e as Error).message}` })
@@ -45,6 +46,7 @@ export function MembersTab() {
     try {
       await deleteMember(m.uid)
       setRows((list) => list.filter((x) => x.uid !== m.uid))
+      refreshPending()
       setMsg({ type: 'ok', text: '삭제했습니다.' })
     } catch (e) {
       setMsg({ type: 'error', text: `삭제 실패: ${(e as Error).message}` })

@@ -38,6 +38,9 @@ export interface AuthContextValue {
   listMembers: () => Promise<Member[]>
   saveMember: (m: Member) => Promise<void>
   deleteMember: (uid: string) => Promise<void>
+  /** 승인 대기 인원 수 (관리자만 집계) */
+  pendingCount: number
+  refreshPending: () => Promise<void>
 }
 
 const Ctx = createContext<AuthContextValue | null>(null)
@@ -107,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [localOnly, setLocalOnly] = useState(readLocalOnly)
+  const [pendingCount, setPendingCount] = useState(0)
   const fsRef = useRef<{ fs: Fs; db: import('firebase/firestore').Firestore } | null>(null)
 
   const getFs = useCallback(async () => {
@@ -265,25 +269,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return snap.docs.map((d) => d.data() as Member).sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))
   }, [getFs])
 
+  const listMembersRef = useRef<(() => Promise<Member[]>) | null>(null)
+  listMembersRef.current = listMembers
+
+  const refreshPending = useCallback(async () => {
+    try {
+      const list = await (listMembersRef.current?.() ?? Promise.resolve([]))
+      setPendingCount(list.filter((m) => m.status === 'pending').length)
+    } catch {
+      /* 권한이 없으면 집계하지 않는다 */
+    }
+  }, [])
+
   const saveMember = useCallback(
     async (m: Member) => {
       const { fs, db } = await getFs()
       await fs.setDoc(fs.doc(db, MEMBERS_COLLECTION, m.uid), JSON.parse(JSON.stringify(m)))
       if (user && m.uid === user.uid) setMember(m)
+      refreshPending()
     },
-    [getFs, user],
+    [getFs, user, refreshPending],
   )
 
   const deleteMember = useCallback(
     async (uid: string) => {
       const { fs, db } = await getFs()
       await fs.deleteDoc(fs.doc(db, MEMBERS_COLLECTION, uid))
+      refreshPending()
     },
-    [getFs],
+    [getFs, refreshPending],
   )
 
   const ownerEmail = (config.firebase?.ownerEmail || '').trim().toLowerCase()
   const isOwner = !!(enabled && ownerEmail && user?.email && user.email.toLowerCase() === ownerEmail)
+  const adminNow = !!(enabled && (isOwner || (member?.status === 'approved' && member.role === 'admin')))
+
+  // 관리자면 승인 대기 인원을 집계하고 1분마다 갱신한다
+  useEffect(() => {
+    if (!adminNow) {
+      setPendingCount(0)
+      return
+    }
+    refreshPending()
+    const t = window.setInterval(refreshPending, 60000)
+    return () => window.clearInterval(t)
+  }, [adminNow, refreshPending])
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -316,8 +346,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       listMembers,
       saveMember,
       deleteMember,
+      pendingCount,
+      refreshPending,
     }),
-    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember],
+    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember, pendingCount, refreshPending],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

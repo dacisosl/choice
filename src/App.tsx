@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AppDataProvider, lockAll, useAppData, useHashRoute } from './store/useAppData'
 import { AuthProvider, useAuth } from './store/auth'
 import { AuthGate } from './components/AuthGate'
@@ -7,6 +8,7 @@ import { Guide } from './pages/Guide'
 import { Personal } from './pages/Personal'
 import { Compile } from './pages/Compile'
 import { Admin } from './pages/Admin'
+import { MembersTab } from './pages/AdminMembers'
 
 const BookIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -17,7 +19,7 @@ const BookIcon = () => (
 
 function Shell() {
   const { ready, error, master, mode } = useAppData()
-  const { enabled: authEnabled, user, member, isAdmin, signOutUser, localOnly, exitLocalOnly } = useAuth()
+  const { enabled: authEnabled, user, member, isAdmin, signOutUser, signIn, busy, localOnly, exitLocalOnly, pendingCount } = useAuth()
   const [route, go] = useHashRoute()
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   const s = master.settings
@@ -26,23 +28,34 @@ function Shell() {
       {label}
     </button>
   )
+  // 로그인이 필요한 화면만 감싼다. 첫 화면과 이용 안내는 로그인 없이 보인다.
+  const guarded = (node: ReactNode) => <AuthGate>{node}</AuthGate>
+
   return (
     <div className="app">
       <header className="topbar no-print">
         <div className="brand" onClick={() => go('')}>
           <BookIcon />
           <span>
-            교과서 선정 도우미<span className="suffix">{s.year}</span>
+            선정초안작성기<span className="suffix">{s.year}</span>
           </span>
         </div>
         <nav>
           {nav('guide', '이용 안내')}
           {nav('personal', '내 문서')}
           {nav('compile', '총괄표', true)}
+          {authEnabled && isAdmin && (
+            <button className={`${route === 'members' ? 'active' : ''} optional`} onClick={() => go('members')}>
+              회원관리
+              {pendingCount > 0 && <span className="nav-badge">{pendingCount}</span>}
+            </button>
+          )}
           {(!authEnabled || isAdmin) && nav('admin', '관리', true)}
         </nav>
         <div className="meta">
-          <span className={`badge ${mode !== 'local' ? 'ok' : 'warn'}`}>{mode === 'local' ? '브라우저 저장' : '온라인 공유'}</span>
+          {(!authEnabled || user) && (
+            <span className={`badge ${mode !== 'local' ? 'ok' : 'warn'}`}>{mode === 'local' ? '브라우저 저장' : '온라인 공유'}</span>
+          )}
           {authEnabled && member && (
             <span className="who">
               {user?.photoURL && <img className="avatar" src={user.photoURL} alt="" />}
@@ -56,9 +69,15 @@ function Shell() {
             </button>
           )}
           {authEnabled ? (
-            <button className="btn sm ghost" onClick={signOutUser}>
-              로그아웃
-            </button>
+            user ? (
+              <button className="btn sm ghost" onClick={signOutUser}>
+                로그아웃
+              </button>
+            ) : (
+              <button className="btn sm primary" onClick={signIn} disabled={busy}>
+                {busy ? '진행 중…' : '로그인'}
+              </button>
+            )
           ) : (
             route && (
               <button
@@ -78,36 +97,53 @@ function Shell() {
       {route === '' && <Start go={go} />}
       {route === 'guide' && <Guide go={go} />}
       {route === 'personal' &&
-        (authEnabled ? (
-          <Personal />
-        ) : (
-          <Gate role="teacher" code={s.accessCode} title="개인서류 작성">
+        guarded(
+          authEnabled ? (
             <Personal />
-          </Gate>
-        ))}
+          ) : (
+            <Gate role="teacher" code={s.accessCode} title="개인서류 작성">
+              <Personal />
+            </Gate>
+          ),
+        )}
       {route === 'compile' &&
-        (authEnabled ? (
-          <Compile />
-        ) : (
-          <Gate role="compiler" code={s.compilerCode || s.accessCode} title="평가총괄표 작성">
+        guarded(
+          authEnabled ? (
             <Compile />
-          </Gate>
-        ))}
-      {route === 'admin' &&
-        (authEnabled ? (
+          ) : (
+            <Gate role="compiler" code={s.compilerCode || s.accessCode} title="평가총괄표 작성">
+              <Compile />
+            </Gate>
+          ),
+        )}
+      {route === 'members' &&
+        guarded(
           isAdmin ? (
-            <Admin />
+            <MembersTab />
           ) : (
             <div className="card" style={{ maxWidth: 460, margin: '48px auto', textAlign: 'center' }}>
               <h2 style={{ justifyContent: 'center' }}>관리자 전용</h2>
-              <p className="muted small">이 화면은 관리자로 지정된 계정만 볼 수 있습니다. 담당 교사에게 문의하세요.</p>
+              <p className="muted small">이 화면은 관리자로 지정된 계정만 볼 수 있습니다.</p>
             </div>
-          )
-        ) : (
-          <Gate role="admin" code={s.adminCode} title="관리">
-            <Admin />
-          </Gate>
-        ))}
+          ),
+        )}
+      {route === 'admin' &&
+        guarded(
+          authEnabled ? (
+            isAdmin ? (
+              <Admin />
+            ) : (
+              <div className="card" style={{ maxWidth: 460, margin: '48px auto', textAlign: 'center' }}>
+                <h2 style={{ justifyContent: 'center' }}>관리자 전용</h2>
+                <p className="muted small">이 화면은 관리자로 지정된 계정만 볼 수 있습니다. 담당 교사에게 문의하세요.</p>
+              </div>
+            )
+          ) : (
+            <Gate role="admin" code={s.adminCode} title="관리">
+              <Admin />
+            </Gate>
+          ),
+        )}
     </div>
   )
 }
@@ -115,11 +151,9 @@ function Shell() {
 export default function App() {
   return (
     <AuthProvider>
-      <AuthGate>
-        <AppDataProvider>
-          <Shell />
-        </AppDataProvider>
-      </AuthGate>
+      <AppDataProvider>
+        <Shell />
+      </AppDataProvider>
     </AuthProvider>
   )
 }

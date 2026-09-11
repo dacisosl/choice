@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAppData } from '../store/useAppData'
+import { useAuth } from '../store/auth'
 
 /** public/hero.png 가 있으면 시안 이미지를 그대로 첫 화면에 사용한다 */
 const HERO_URL = `${import.meta.env.BASE_URL}hero.png`
@@ -96,6 +97,8 @@ function BackCoverArt() {
 
 export function Start({ go }: { go: (h: string) => void }) {
   const { master, mode, evaluations, summaries } = useAppData()
+  const { enabled: authEnabled, isApproved } = useAuth()
+  const showStats = !authEnabled || isApproved
   const submitted = evaluations.filter((e) => e.status === 'submitted').length
   const finalized = summaries.filter((s) => s.status === 'finalized').length
   const openSubjects = master.subjects.filter((s) => master.publishers.filter((p) => p.subjectId === s.id).length > 1).length
@@ -108,29 +111,28 @@ export function Start({ go }: { go: (h: string) => void }) {
       <section className="hero hero-image">
         <div className="hero-img-wrap">
           <img src={HERO_URL} alt="교과서 선정 서류, 초안부터 간편하게" />
-          {/* 이미지 속 버튼 위치에 실제 클릭 영역을 겹친다 */}
-          <button className="hotspot cta-hot" onClick={() => go('personal')} aria-label="서류 초안 작성하기" />
+          {/* 이미지 속 버튼 자리에 실제 버튼을 더 크게 겹친다 */}
+          <button className="cta-over" onClick={() => go('personal')}>
+            서류 초안 작성하기 <span className="arrow">→</span>
+          </button>
+          <button className="chip-over" onClick={() => go('compile')}>
+            총괄 작성 교사이신가요? <b>평가총괄표 작성 →</b>
+          </button>
         </div>
-        <div className="role-links">
-          <span>
-            총괄 작성 교사이신가요? <button onClick={() => go('compile')}>평가총괄표 작성 →</button>
-          </span>
-          <span>
-            담당 교사이신가요? <button onClick={() => go('admin')}>관리 →</button>
-          </span>
-        </div>
-        <div className="stats-line">
-          <span>
-            작성 가능 과목 <b>{openSubjects}</b>
-          </span>
-          <span>
-            제출 <b>{submitted}</b>건
-          </span>
-          <span>
-            총괄 확정 <b>{finalized}</b>과목
-          </span>
-          <span>{mode === 'local' ? '이 브라우저 저장 모드' : '온라인 공유 모드'}</span>
-        </div>
+        {showStats && (
+          <div className="stats-line">
+            <span>
+              작성 가능 과목 <b>{openSubjects}</b>
+            </span>
+            <span>
+              제출 <b>{submitted}</b>건
+            </span>
+            <span>
+              총괄 확정 <b>{finalized}</b>과목
+            </span>
+            <span>{mode === 'local' ? '이 브라우저 저장 모드' : '온라인 공유 모드'}</span>
+          </div>
+        )}
       </section>
     )
   }
