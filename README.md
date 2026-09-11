@@ -32,7 +32,7 @@ GitHub Pages는 정적 호스팅이므로 앱 자체에는 서버가 없습니�
 |---|---|---|
 | 브라우저 저장 (기본) | `config.json` 의 DB 항목이 모두 비어 있음 | 각 교사의 브라우저(localStorage)에만 저장. 위원은 [파일로 내보내기(JSON)] → 총괄 교사가 [제출 파일 가져오기]로 취합 |
 | **Supabase** (Postgres) | `supabaseUrl`, `supabaseAnonKey` 입력 | 무료 티어로 충분. 테이블 1개(`docs`)에 마스터·개인 제출·총괄표를 JSON으로 보관 |
-| **Firebase Firestore** | `firebase.apiKey`, `firebase.projectId` 등 입력 | 무료 Spark 플랜으로 충분. 컬렉션 1개(`docs`) 사용 |
+| **Firebase Firestore** | `firebase.apiKey`, `firebase.projectId` 등 입력 | 무료 Spark 플랜으로 충분. `firebase.databaseId` 로 앱 전용 데이터베이스(현재 `choice`)를 지정하면 같은 프로젝트의 다른 앱과 규칙·데이터가 완전히 분리됨 |
 
 저장되는 문서 종류는 세 가지입니다.
 
@@ -58,7 +58,7 @@ GitHub Pages는 정적 호스팅이므로 앱 자체에는 서버가 없습니�
 5. **최초 관리자 지정** — 같은 구글 계정 주소를 두 곳에 똑같이 적습니다.
    - [`firebase/firestore.rules`](./firebase/firestore.rules) 의 `isOwner()` 안 이메일 (규칙에서의 권한)
    - [`public/config.json`](./public/config.json) 의 `firebase.ownerEmail` (화면에서의 권한)
-6. **규칙 게시** — Firestore › 규칙 탭에 [`firebase/firestore.rules`](./firebase/firestore.rules) 의 표시된 구간을 붙여 넣고 게시합니다.
+6. **규칙 게시** — Firestore 화면 상단에서 `config.json` 의 `firebase.databaseId` 와 같은 데이터베이스(현재 `choice`)를 선택한 뒤, 규칙 탭에 [`firebase/firestore.rules`](./firebase/firestore.rules) 전체를 붙여 넣고 게시합니다. 앱 전용 DB라 통째로 교체해도 다른 앱에 영향이 없습니다.
 7. push 하면 배포됩니다. 사이트에서 구글 로그인 → 이름 입력 → 가입 신청을 하면, 최초 관리자로 지정한 계정은 승인을 기다리지 않고 바로 관리 화면에 들어갑니다. 관리 › 회원 관리에서 본인을 승인해 두고, 이후 신청하는 교사들을 승인하면 됩니다.
 
 > `ownerEmail` 을 비워 두면 아무도 승인할 수 없습니다. 그 경우에는 Firebase 콘솔의 `choice_members` 컬렉션에서 본인 문서의 `status` 를 `approved`, `role` 을 `admin` 으로 직접 고쳐야 합니다.

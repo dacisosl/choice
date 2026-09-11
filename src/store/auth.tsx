@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppConfig, Member } from '../types'
-import { ensureFirebaseApp, hasFirebaseConfig, MEMBERS_COLLECTION } from './firebase'
+import { ensureFirebaseApp, getDb, hasFirebaseConfig, MEMBERS_COLLECTION } from './firebase'
 import { loadConfig } from './storage'
 
 export interface AuthUser {
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cfg = config.firebase
     if (!hasFirebaseConfig(cfg)) throw new Error('Firebase 설정이 없습니다.')
     const [app, fs] = await Promise.all([ensureFirebaseApp(cfg), import('firebase/firestore')])
-    fsRef.current = { fs, db: fs.getFirestore(app) }
+    fsRef.current = { fs, db: getDb(fs, app, cfg) }
     return fsRef.current
   }, [config])
 
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           import('firebase/auth'),
           import('firebase/firestore'),
         ])
-        const db = fs.getFirestore(app)
+        const db = getDb(fs, app, cfg.firebase)
         fsRef.current = { fs, db }
         unsub = auth.onAuthStateChanged(auth.getAuth(app), async (u) => {
           if (cancelled) return

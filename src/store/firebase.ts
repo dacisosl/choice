@@ -55,5 +55,11 @@ export function hasFirebaseConfig(cfg?: FirebaseConfig | null): cfg is FirebaseC
   return !!(cfg && cfg.apiKey && cfg.projectId)
 }
 
+/** 설정된 데이터베이스 ID의 Firestore 인스턴스 (비우면 (default)) */
+export function getDb(fs: typeof import('firebase/firestore'), app: FirebaseApp, cfg: FirebaseConfig) {
+  const id = (cfg.databaseId || '').trim()
+  return id && id !== '(default)' ? fs.getFirestore(app, id) : fs.getFirestore(app)
+}
+
 /** 구성원 명단 컬렉션 (문서 id = 로그인 uid) */
 export const MEMBERS_COLLECTION = 'choice_members'

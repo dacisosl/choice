@@ -1,5 +1,5 @@
 import type { AppConfig, Evaluation, FirebaseConfig, Master, Summary } from '../types'
-import { ensureFirebaseApp, hasFirebaseConfig } from './firebase'
+import { ensureFirebaseApp, getDb, hasFirebaseConfig } from './firebase'
 
 export type StorageMode = 'local' | 'supabase' | 'firebase'
 
@@ -140,7 +140,7 @@ export class FirestoreStore implements Store {
 
   static async create(cfg: FirebaseConfig): Promise<FirestoreStore> {
     const [app, fs] = await Promise.all([ensureFirebaseApp(cfg), import('firebase/firestore')])
-    return new FirestoreStore(fs.getFirestore(app), fs, cfg.collection || 'docs')
+    return new FirestoreStore(getDb(fs, app, cfg), fs, cfg.collection || 'docs')
   }
 
   private async upsert(id: string, kind: string, subjectId: string | null, data: unknown) {

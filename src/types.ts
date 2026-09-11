@@ -153,6 +153,8 @@ export interface FirebaseConfig {
   appId?: string
   /** 컬렉션 이름 (기본 docs). 기존 Firebase 프로젝트를 여러 앱이 공유할 때 앱별로 다르게 지정 */
   collection?: string
+  /** Firestore 데이터베이스 ID. 비우면 (default). 프로젝트에 앱 전용 DB를 만들었으면 그 이름 */
+  databaseId?: string
   /** App Check: 등록된 사이트에서 온 요청만 Firestore에 통과시킴 */
   appCheck?: AppCheckConfig
   /**

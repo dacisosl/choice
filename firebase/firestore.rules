@@ -13,6 +13,8 @@ rules_version = '2';
 //    바꾸려면 이 파일과 public/config.json 의 firebase.ownerEmail 을 함께 고치세요.
 //
 // 컬렉션 이름은 public/config.json 의 firebase.collection 과 같아야 합니다. (기본 choice_docs)
+// 이 규칙은 config.json 의 firebase.databaseId 로 지정한 데이터베이스(현재 'choice')의 규칙 탭에 게시합니다.
+// 앱 전용 DB를 따로 쓰므로 같은 프로젝트의 다른 앱((default) DB) 규칙과 섞이지 않습니다.
 // ─────────────────────────────────────────────────────────────
 
 service cloud.firestore {

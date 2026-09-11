@@ -14,6 +14,9 @@
     "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
     "collection": "choice_docs",
 
+    "_databaseId": "Firestore 데이터베이스 ID. 프로젝트에 이 앱 전용으로 만든 DB 이름. 비우면 (default).",
+    "databaseId": "choice",
+
     "_ownerEmail": "최초 관리자 구글 계정. Firestore 규칙의 isOwner() 이메일과 같아야 합니다.",
     "ownerEmail": "schoooolid@gmail.com",
 
