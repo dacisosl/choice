@@ -70,27 +70,30 @@ type SupaClient = import('@supabase/supabase-js').SupabaseClient
 
 export class SupabaseStore implements Store {
   mode: StorageMode = 'supabase'
-  constructor(private client: SupaClient) {}
+  constructor(
+    private client: SupaClient,
+    private table = 'docs',
+  ) {}
 
-  static async create(url: string, anonKey: string): Promise<SupabaseStore> {
+  static async create(url: string, anonKey: string, table = 'docs'): Promise<SupabaseStore> {
     const { createClient } = await import('@supabase/supabase-js')
-    return new SupabaseStore(createClient(url, anonKey))
+    return new SupabaseStore(createClient(url, anonKey), table)
   }
 
   private async upsert(id: string, kind: string, subjectId: string | null, data: unknown) {
     const { error } = await this.client
-      .from('docs')
+      .from(this.table)
       .upsert({ id, kind, subject_id: subjectId, data, updated_at: new Date().toISOString() })
     if (error) throw new Error(error.message)
   }
   private async listKind<T>(kind: string): Promise<T[]> {
-    const { data, error } = await this.client.from('docs').select('data').eq('kind', kind)
+    const { data, error } = await this.client.from(this.table).select('data').eq('kind', kind)
     if (error) throw new Error(error.message)
     return (data || []).map((r: { data: T }) => r.data)
   }
 
   async getMaster() {
-    const { data, error } = await this.client.from('docs').select('data').eq('id', 'master').maybeSingle()
+    const { data, error } = await this.client.from(this.table).select('data').eq('id', 'master').maybeSingle()
     if (error) throw new Error(error.message)
     return (data?.data as Master) ?? null
   }
@@ -104,7 +107,7 @@ export class SupabaseStore implements Store {
     await this.upsert(e.id, 'evaluation', e.subjectId, e)
   }
   async deleteEvaluation(id: string) {
-    const { error } = await this.client.from('docs').delete().eq('id', id)
+    const { error } = await this.client.from(this.table).delete().eq('id', id)
     if (error) throw new Error(error.message)
   }
   async listSummaries() {
@@ -123,27 +126,28 @@ export class FirestoreStore implements Store {
   private constructor(
     private db: Firestore,
     private fs: typeof import('firebase/firestore'),
+    private col = 'docs',
   ) {}
 
   static async create(cfg: FirebaseConfig): Promise<FirestoreStore> {
     const [{ initializeApp, getApps }, fs] = await Promise.all([import('firebase/app'), import('firebase/firestore')])
     const app = getApps()[0] || initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.authDomain, projectId: cfg.projectId, appId: cfg.appId })
-    return new FirestoreStore(fs.getFirestore(app), fs)
+    return new FirestoreStore(fs.getFirestore(app), fs, cfg.collection || 'docs')
   }
 
   private async upsert(id: string, kind: string, subjectId: string | null, data: unknown) {
     // Firestore는 undefined 값을 허용하지 않으므로 JSON 왕복으로 제거
     const clean = JSON.parse(JSON.stringify(data))
-    await this.fs.setDoc(this.fs.doc(this.db, 'docs', id), { kind, subject_id: subjectId, data: clean, updated_at: new Date().toISOString() })
+    await this.fs.setDoc(this.fs.doc(this.db, this.col, id), { kind, subject_id: subjectId, data: clean, updated_at: new Date().toISOString() })
   }
   private async listKind<T>(kind: string): Promise<T[]> {
-    const q = this.fs.query(this.fs.collection(this.db, 'docs'), this.fs.where('kind', '==', kind))
+    const q = this.fs.query(this.fs.collection(this.db, this.col), this.fs.where('kind', '==', kind))
     const snap = await this.fs.getDocs(q)
     return snap.docs.map((d) => d.data().data as T)
   }
 
   async getMaster() {
-    const snap = await this.fs.getDoc(this.fs.doc(this.db, 'docs', 'master'))
+    const snap = await this.fs.getDoc(this.fs.doc(this.db, this.col, 'master'))
     return snap.exists() ? (snap.data().data as Master) : null
   }
   async saveMaster(m: Master) {
@@ -156,7 +160,7 @@ export class FirestoreStore implements Store {
     await this.upsert(e.id, 'evaluation', e.subjectId, e)
   }
   async deleteEvaluation(id: string) {
-    await this.fs.deleteDoc(this.fs.doc(this.db, 'docs', id))
+    await this.fs.deleteDoc(this.fs.doc(this.db, this.col, id))
   }
   async listSummaries() {
     return this.listKind<Summary>('summary')
@@ -192,7 +196,7 @@ export async function createStore(cfg: AppConfig): Promise<Store> {
   const key = ov?.key || cfg.supabaseAnonKey || ''
   if (url && key) {
     try {
-      return await SupabaseStore.create(url, key)
+      return await SupabaseStore.create(url, key, cfg.supabaseTable || 'docs')
     } catch (e) {
       console.warn('Supabase 초기화 실패, 로컬 모드로 전환', e)
     }

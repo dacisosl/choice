@@ -11,6 +11,7 @@
     "apiKey": "",
     "authDomain": "",
     "projectId": "",
-    "appId": ""
+    "appId": "",
+    "collection": "choice_docs"
   }
 }

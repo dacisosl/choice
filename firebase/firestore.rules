@@ -3,6 +3,10 @@ rules_version = '2';
 // 학교 내부용: 앱 진입은 접속 코드로 제어하고, DB는 docs 컬렉션만 읽기/쓰기 허용
 service cloud.firestore {
   match /databases/{database}/documents {
+    // config.json 의 firebase.collection 과 같은 이름이어야 함 (기본 docs, 기존 프로젝트 공유 시 choice_docs 등)
+    match /choice_docs/{docId} {
+      allow read, write: if true;
+    }
     match /docs/{docId} {
       allow read, write: if true;
     }

@@ -47,6 +47,8 @@ GitHub Pages는 정적 호스팅이므로 앱 자체에는 서버가 없습니�
 3. 프로젝트 설정 › 내 앱 › 웹 앱 추가 후 표시되는 `firebaseConfig` 의 `apiKey`, `authDomain`, `projectId`, `appId` 를 복사합니다.
 4. [`public/config.json`](./public/config.json) 의 `firebase` 항목에 붙여 넣고 push 합니다.
 
+> **이미 쓰고 있는 Firebase 프로젝트를 재사용해도 됩니다.** 프로젝트 생성 한도에 걸렸다면 기존 프로젝트의 웹 앱 설정을 그대로 넣고, `collection` 을 다른 앱과 겹치지 않는 이름(기본 `choice_docs`)으로 두면 데이터가 분리됩니다. 규칙 파일에도 같은 컬렉션 이름을 허용해야 합니다.
+
 ```json
 {
   "schoolName": "해밀고등학교",

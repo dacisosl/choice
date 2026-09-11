@@ -133,6 +133,8 @@ export interface FirebaseConfig {
   authDomain?: string
   projectId?: string
   appId?: string
+  /** 컬렉션 이름 (기본 docs). 기존 Firebase 프로젝트를 여러 앱이 공유할 때 앱별로 다르게 지정 */
+  collection?: string
 }
 
 export interface AppConfig {
@@ -140,5 +142,7 @@ export interface AppConfig {
   year?: number
   supabaseUrl?: string
   supabaseAnonKey?: string
+  /** 테이블 이름 (기본 docs) */
+  supabaseTable?: string
   firebase?: FirebaseConfig
 }
