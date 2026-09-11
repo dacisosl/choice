@@ -12,6 +12,13 @@
     "authDomain": "edit-help.firebaseapp.com",
     "projectId": "edit-help",
     "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
-    "collection": "choice_docs"
+    "collection": "choice_docs",
+
+    "_appCheck": "siteKey를 넣으면 App Check가 켜집니다. 콘솔에서 Firestore 적용(enforce)까지 해야 실제로 차단됩니다.",
+    "appCheck": {
+      "provider": "enterprise",
+      "siteKey": "",
+      "debugToken": ""
+    }
   }
 }

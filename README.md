@@ -60,7 +60,22 @@ GitHub Pages는 정적 호스팅이므로 앱 자체에는 서버가 없습니�
 ```
 
 > anon 키·Firebase 웹 설정은 원래 공개되는 값입니다. 앱 진입은 관리 › 설정의 **접속 코드 / 총괄 코드 / 관리 코드**로 제어하세요.
-> 관리 코드 초기값은 `1234` 이며, 배포 후 반드시 변경하세요. 정식 로그인(SSO)이 필요하면 2차 확장으로 검토합니다.
+> 관리 코드 초기값은 `1234` 이며, 배포 후 반드시 변경하세요.
+
+### App Check로 접근 제한 (권장)
+
+규칙만으로는 컬렉션이 누구에게나 열려 있습니다. App Check를 켜면 **등록한 사이트에서 온 요청만** Firestore에 도달합니다. 외부 스크립트나 다른 도메인에서의 직접 호출이 차단됩니다.
+
+1. **reCAPTCHA 키 발급** — Google Cloud 콘솔 › 보안 › reCAPTCHA 에서 API를 사용 설정하고 **웹** 유형 키를 만듭니다. 도메인에 `dacisosl.github.io` 를 넣고, 체크박스 챌린지는 선택하지 않습니다(점수 기반). 키 ID를 복사합니다.
+2. **Firebase에 등록** — Firebase 콘솔 › 보안 › **App Check** › 앱 탭에서 웹 앱을 고르고 **reCAPTCHA Enterprise** 공급업체에 위 키를 등록·저장합니다.
+3. **앱에 반영** — [`public/config.json`](./public/config.json) 의 `firebase.appCheck.siteKey` 에 키를 넣고 push 합니다. 키가 비어 있으면 App Check는 켜지지 않습니다.
+4. **적용(enforce)** — App Check › API 탭에서 Cloud Firestore를 먼저 **모니터링**으로 두고 요청이 정상 토큰으로 집계되는지 확인한 뒤 **적용**으로 바꿉니다.
+
+> ⚠ **적용은 프로젝트 단위입니다.** 같은 Firebase 프로젝트의 다른 앱이 Firestore를 쓰고 있다면, 그 앱에도 App Check를 넣기 전까지 함께 차단됩니다. 기존 앱이 Realtime Database만 쓴다면 Firestore 적용은 영향을 주지 않습니다. 모니터링 단계에서 요청 출처를 먼저 확인하세요.
+
+> App Check는 **사이트 밖에서의 접근**을 막습니다. 사이트 주소를 아는 사람이 브라우저로 직접 열어 보는 것까지 막지는 못합니다. 개인 평가 열람 자체를 통제하려면 Firebase 인증을 붙이고 규칙을 `request.auth != null` 로 바꾸는 2차 작업이 필요합니다.
+
+로컬 개발(`localhost`)에서는 디버그 토큰이 쓰입니다. 브라우저 콘솔에 출력된 토큰을 App Check › 앱 › 디버그 토큰 관리에 등록하면 로컬에서도 통과합니다. 고정해서 쓰려면 `firebase.appCheck.debugToken` 에 넣으세요.
 
 ## AI 문장 생성 (선택)
 
@@ -90,7 +105,7 @@ src/
   seed.ts              과목 목록·기본 평가기준·의견 선택지 초기 데이터
   lib/scoring.ts       순위→점수 초안, 합계·평균·순위(동점) 계산
   lib/ai.ts            OpenRouter 호출 + 규칙 기반 폴백 문장
-  store/storage.ts     localStorage / Supabase 어댑터
+  store/storage.ts     localStorage / Supabase / Firestore 어댑터, App Check 초기화
   components/Form*.tsx 서식1·2·3 (화면·인쇄 공용)
   pages/               Start · Personal(S1~S4) · Compile(T1~T4) · Admin(A1~A4)
 ```

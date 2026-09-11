@@ -5,7 +5,7 @@ import { fmtDate, useAppData } from '../store/useAppData'
 import { columnTotal, criteriaFor, publishersFor } from '../lib/scoring'
 import { getApiKey, setApiKey } from '../lib/ai'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
-import { getSupabaseOverride, setSupabaseOverride } from '../store/storage'
+import { getAppCheckState, getSupabaseOverride, setSupabaseOverride } from '../store/storage'
 
 const TABS = ['과목·출판사', '평가기준', '의견 선택지', '위원 명단', '설정·현황']
 
@@ -560,6 +560,7 @@ function SettingsTab() {
   const { evaluations, summaries, mode, config, resetMaster, saveEvaluation, saveSummary } = useAppData()
   const [s, setS] = useState<Settings>(master.settings)
   const [apiKey, setKey] = useState(getApiKey())
+  const appCheck = getAppCheckState()
   const ov = getSupabaseOverride()
   const [sbUrl, setSbUrl] = useState(ov?.url || config.supabaseUrl || '')
   const [sbKey, setSbKey] = useState(ov?.key || config.supabaseAnonKey || '')
@@ -711,6 +712,19 @@ function SettingsTab() {
           <p className="muted small">
             여러 교사가 함께 쓰려면 Supabase 또는 Firebase 프로젝트를 만들고 저장소의 <code>public/config.json</code>에 연결 정보를 넣어 배포하세요(README 참고). 아래 Supabase 입력은 이 브라우저에서만 임시로 덮어씁니다.
           </p>
+          {mode === 'firebase' && (
+            <p className="small" style={{ marginTop: -2 }}>
+              App Check{' '}
+              {appCheck === 'on' ? (
+                <span className="badge ok">작동 중</span>
+              ) : appCheck === 'failed' ? (
+                <span className="badge warn">초기화 실패 — 사이트 키·등록 도메인 확인</span>
+              ) : (
+                <span className="badge gray">꺼짐 — config.json에 사이트 키 미입력</span>
+              )}{' '}
+              <span className="muted">외부에서의 직접 접근을 차단합니다.</span>
+            </p>
+          )}
           <label className="field">
             Supabase URL
             <input type="text" value={sbUrl} onChange={(e) => setSbUrl(e.target.value)} placeholder="https://xxxx.supabase.co" />

@@ -135,6 +135,17 @@ export interface FirebaseConfig {
   appId?: string
   /** 컬렉션 이름 (기본 docs). 기존 Firebase 프로젝트를 여러 앱이 공유할 때 앱별로 다르게 지정 */
   collection?: string
+  /** App Check: 등록된 사이트에서 온 요청만 Firestore에 통과시킴 */
+  appCheck?: AppCheckConfig
+}
+
+export interface AppCheckConfig {
+  /** reCAPTCHA 종류. 신규 등록은 enterprise 권장 */
+  provider?: 'enterprise' | 'v3'
+  /** reCAPTCHA 사이트 키(공개 값). 비어 있으면 App Check를 켜지 않음 */
+  siteKey?: string
+  /** localhost 개발용 디버그 토큰. 배포본에서는 무시됨 */
+  debugToken?: string
 }
 
 export interface AppConfig {
