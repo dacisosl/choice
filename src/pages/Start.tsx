@@ -105,11 +105,14 @@ export function Start({ go }: { go: (h: string) => void }) {
         </div>
 
         <div className="hero-right">
-          <div className="start-label">여기를 눌러 시작하세요</div>
-          <button className="cta-big" onClick={() => go('personal')}>
-            <span>서류 초안</span>
-            <span>작성하기</span>
-            <span className="arrow" aria-hidden="true">
+          <button className="cta-tall" onClick={() => go('personal')}>
+            <span className="cta-tall-label">여기를 눌러 시작하세요</span>
+            <span className="cta-tall-title">
+              서류 초안
+              <br />
+              작성하기
+            </span>
+            <span className="cta-tall-arrow" aria-hidden="true">
               →
             </span>
           </button>

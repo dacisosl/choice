@@ -187,21 +187,29 @@ input[type='checkbox'] { accent-color: var(--primary); }
 }
 .hero-left .lead { word-break: keep-all; color: var(--text-2); font-size: clamp(12.5px, 1.15vw, 15px); line-height: 1.5; margin: 0; max-width: 21em; }
 
-.hero-right { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 26px; }
-.start-label { font-size: clamp(15px, 1.7vw, 21px); font-weight: 800; color: var(--title); letter-spacing: -0.03em; margin-bottom: 12px; }
-.cta-big {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-  width: min(376px, 100%); padding: 38px 22px 32px;
-  border: none; border-radius: 26px; cursor: pointer;
-  background: var(--primary-deep); color: #fff;
-  font-size: clamp(27px, 3.1vw, 40px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.16;
-  box-shadow: 0 22px 44px -16px rgba(25, 55, 42, 0.75), 0 3px 8px rgba(25, 55, 42, 0.25);
-  transition: transform .13s, background .15s, box-shadow .15s;
+.hero-right { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 6px; }
+/* 세로로 긴 시작 카드: 안내 문구·제목·화살표가 한 필드 안에 들어간다 */
+.cta-tall {
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  width: min(300px, 100%); height: 432px; padding: 30px 26px 28px;
+  border: none; border-radius: 28px; cursor: pointer; text-align: center;
+  background: linear-gradient(168deg, #30604d 0%, #244a3c 62%, #1e3f33 100%);
+  color: #fff;
+  box-shadow: 0 26px 48px -18px rgba(25, 55, 42, 0.7), 0 3px 8px rgba(25, 55, 42, 0.22);
+  transition: transform .14s, box-shadow .15s;
 }
-.cta-big:hover { background: #1d3d31; transform: translateY(-2px); box-shadow: 0 26px 50px -16px rgba(25, 55, 42, 0.8); }
-.cta-big:active { transform: translateY(0); }
-.cta-big .arrow { font-size: 0.8em; font-weight: 700; margin-top: 10px; line-height: 1; }
-.compile-ask { margin-top: 22px; color: var(--text-2); font-size: clamp(12px, 1.05vw, 13.5px); font-weight: 500; }
+.cta-tall:hover { transform: translateY(-3px); box-shadow: 0 32px 56px -18px rgba(25, 55, 42, 0.75), 0 4px 10px rgba(25, 55, 42, 0.24); }
+.cta-tall:active { transform: translateY(0); }
+.cta-tall-label { font-size: clamp(12.5px, 1.05vw, 14px); font-weight: 600; letter-spacing: 0.01em; color: rgba(255, 255, 255, 0.78); }
+.cta-tall-title { font-size: clamp(28px, 3vw, 40px); font-weight: 900; line-height: 1.15; letter-spacing: -0.04em; word-break: keep-all; }
+.cta-tall-arrow {
+  width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.12); border: 1.5px solid rgba(255, 255, 255, 0.4);
+  font-size: 26px; font-weight: 700; line-height: 1;
+  transition: background .15s, color .15s, transform .15s;
+}
+.cta-tall:hover .cta-tall-arrow { background: #fff; color: var(--primary-deep); transform: translateX(3px); }
+.compile-ask { margin-top: 20px; color: var(--text-2); font-size: clamp(12px, 1.05vw, 13.5px); font-weight: 500; }
 .chip-pill {
   margin-top: 8px; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
   height: 40px; padding: 0 24px; border-radius: 999px; cursor: pointer;
@@ -348,7 +356,7 @@ td.num { text-align: center; }
 }
 @media (max-width: 640px) {
   .topbar nav { display: none; }
-  .cta-big { width: 100%; border-radius: 22px; }
+  .cta-tall { width: 100%; height: auto; min-height: 250px; padding: 24px 22px; gap: 18px; border-radius: 24px; }
   .topbar .brand .suffix { display: none; }
   .card { padding: 16px; }
   .hero { padding-top: 22px; }
