@@ -13,20 +13,23 @@ const GoogleMark = () => (
 
 /** 구글 로그인 + 관리자 승인 게이트. Firebase 설정이 없으면 그대로 통과한다. */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, isOwner, ownerEmail } = useAuth()
+  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, isOwner, isAnonymous, ownerEmail } = useAuth()
   const [name, setName] = useState('')
 
   if (!enabled) return <>{children}</>
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>확인 중…</div>
 
-  // 1) 로그인 전
-  if (!user) {
+  // 1) 로그인 전 (익명 세션 포함)
+  if (!user || isAnonymous) {
     return (
       <div className="auth-screen">
         <div className="card">
           <h2>로그인</h2>
           <p className="muted small">
-            학교 구성원 확인을 위해 구글 계정으로 로그인합니다. 로그인 후 이름을 입력하면 관리자 승인을 거쳐 이용할 수 있습니다.
+            총괄표 작성과 관리 화면은 학교 구성원 확인이 필요합니다. 구글 계정으로 로그인한 뒤 이름을 입력하면 관리자 승인을 거쳐 이용할 수 있습니다.
+            <br />
+            <br />
+            개인 서류 작성과 제출은 로그인 없이 바로 하실 수 있습니다.
           </p>
           <button className="btn lg google" onClick={signIn} disabled={busy}>
             <GoogleMark />

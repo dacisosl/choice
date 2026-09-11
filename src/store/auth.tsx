@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string
   photoURL?: string
   googleName?: string
+  anonymous: boolean
 }
 
 export interface AuthContextValue {
@@ -22,6 +23,8 @@ export interface AuthContextValue {
   busy: boolean
   isApproved: boolean
   isAdmin: boolean
+  /** 구글 로그인 없이 자동으로 만들어진 익명 세션인지 (일반 교사) */
+  isAnonymous: boolean
   /** config의 ownerEmail과 같은 계정 — 승인 없이 관리자 */
   isOwner: boolean
   /** config에 설정된 최초 관리자 주소 (진단 표시용) */
@@ -129,12 +132,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ])
         const db = getDb(fs, app, cfg.firebase)
         fsRef.current = { fs, db }
-        unsub = auth.onAuthStateChanged(auth.getAuth(app), async (u) => {
+        const a = auth.getAuth(app)
+        unsub = auth.onAuthStateChanged(a, async (u) => {
           if (cancelled) return
           if (!u) {
+            // 일반 교사는 로그인 없이 제출할 수 있도록 익명 세션을 자동으로 만든다
             setUser(null)
             setMember(null)
-            setReady(true)
+            try {
+              await auth.signInAnonymously(a)
+            } catch (e) {
+              console.warn('익명 세션 생성 실패', e)
+              setReady(true)
+            }
             return
           }
           setUser({
@@ -142,7 +152,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: u.email || '',
             photoURL: u.photoURL || undefined,
             googleName: u.displayName || undefined,
+            anonymous: u.isAnonymous,
           })
+          if (u.isAnonymous) {
+            setMember(null)
+            setError(null)
+            setReady(true)
+            return
+          }
           try {
             const snap = await fs.getDoc(fs.doc(db, MEMBERS_COLLECTION, u.uid))
             if (cancelled) return
@@ -177,12 +194,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const a = auth.getAuth(app)
       const provider = new auth.GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
+      const current = a.currentUser
       try {
-        await auth.signInWithPopup(a, provider)
+        // 익명으로 작성 중이던 문서를 잃지 않도록 계정을 연결한다
+        if (current?.isAnonymous) {
+          try {
+            await auth.linkWithPopup(current, provider)
+          } catch (e) {
+            const code = (e as { code?: string }).code || ''
+            if (code.includes('already-in-use') || code.includes('provider-already-linked')) await auth.signInWithPopup(a, provider)
+            else throw e
+          }
+        } else {
+          await auth.signInWithPopup(a, provider)
+        }
       } catch (e) {
         const code = (e as { code?: string }).code || ''
-        if (code.includes('popup-blocked') || code.includes('operation-not-supported') || code.includes('popup-closed-by-user')) {
-          if (code.includes('popup-closed-by-user')) throw e
+        if (code.includes('popup-blocked') || code.includes('operation-not-supported')) {
           await auth.signInWithRedirect(a, provider)
         } else throw e
       }
@@ -199,6 +227,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await auth.signOut(auth.getAuth(app))
     setUser(null)
     setMember(null)
+    // 로그아웃해도 일반 교사 기능은 계속 쓸 수 있도록 익명 세션을 다시 만든다
+    try {
+      await auth.signInAnonymously(auth.getAuth(app))
+    } catch {
+      /* 다음 새로고침에서 재시도 */
+    }
   }, [config])
 
   const submitProfile = useCallback(
@@ -278,8 +312,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const ownerEmail = (config.firebase?.ownerEmail || '').trim().toLowerCase()
-  const isOwner = !!(enabled && ownerEmail && user?.email && user.email.toLowerCase() === ownerEmail)
-  const adminNow = !!(enabled && (isOwner || (member?.status === 'approved' && member.role === 'admin')))
+  const isOwner = !!(enabled && !user?.anonymous && ownerEmail && user?.email && user.email.toLowerCase() === ownerEmail)
+  const isAnonymous = !!user?.anonymous
+  const adminNow = !!(enabled && !isAnonymous && (isOwner || (member?.status === 'approved' && member.role === 'admin')))
 
   // 관리자면 승인 대기 인원을 집계하고 1분마다 갱신한다
   useEffect(() => {
@@ -301,9 +336,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       member,
       error,
       busy,
-      isApproved: !enabled || isOwner || member?.status === 'approved',
-      isAdmin: !enabled || isOwner || (member?.status === 'approved' && member.role === 'admin'),
+      isApproved: !enabled || (!isAnonymous && (isOwner || member?.status === 'approved')),
+      isAdmin: !enabled || adminNow,
       isOwner,
+      isAnonymous,
       ownerEmail,
       signIn,
       signOutUser,
@@ -315,7 +351,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       pendingCount,
       refreshPending,
     }),
-    [ready, enabled, config, user, member, error, busy, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember, pendingCount, refreshPending],
+    [ready, enabled, config, user, member, error, busy, isOwner, isAnonymous, adminNow, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember, pendingCount, refreshPending],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

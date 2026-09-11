@@ -16,7 +16,9 @@ const STRENGTHS: RecommendStrength[] = ['적극 추천', '추천', '대안으로
 
 export function Personal() {
   const { master, evaluations, saveEvaluation, deleteEvaluation, mode, refresh } = useAppData()
-  const { enabled: authEnabled, user, member } = useAuth()
+  const { enabled: authEnabled, user, member, isAnonymous } = useAuth()
+  // 구글 로그인으로 승인된 사람은 이름이 고정되고, 로그인 없이 쓰는 교사는 직접 입력한다
+  const nameLocked = authEnabled && !isAnonymous && member?.status === 'approved'
   const [step, setStep] = useState(0)
   const [teacherName, setTeacherName] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -27,10 +29,18 @@ export function Personal() {
   const [length, setLength] = useState<'short' | 'long'>('short')
   const saveTimer = useRef<number | null>(null)
 
-  // 로그인 방식에서는 승인된 계정 이름을 위원명으로 사용한다
+  // 승인된 계정은 그 이름을, 그 외에는 이 브라우저에 저장해 둔 이름을 쓴다
   useEffect(() => {
-    if (authEnabled && member?.displayName) setTeacherName(member.displayName)
-  }, [authEnabled, member])
+    if (nameLocked && member?.displayName) setTeacherName(member.displayName)
+    else {
+      try {
+        const saved = localStorage.getItem('choice.teacherName')
+        if (saved) setTeacherName(saved)
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [nameLocked, member])
 
   const subject = master.subjects.find((s) => s.id === (ev?.subjectId || subjectId))
   const publishers = useMemo(() => (subject ? publishersFor(master, subject.id) : []), [master, subject])
@@ -59,9 +69,7 @@ export function Personal() {
     [],
   )
 
-  const myDrafts = evaluations.filter((e) =>
-    authEnabled && user ? e.uid === user.uid : !!teacherName.trim() && e.teacherName === teacherName.trim(),
-  )
+  const myDrafts = evaluations.filter((e) => (user ? e.uid === user.uid : !!teacherName.trim() && e.teacherName === teacherName.trim()))
 
   const createDraft = async () => {
     if (!teacherName.trim()) return setMsg({ type: 'warn', text: '교사명을 입력하세요.' })
@@ -75,6 +83,13 @@ export function Personal() {
     if (existing) {
       if (!confirm('같은 과목의 문서가 이미 있습니다. 새 초안으로 덮어쓸까요? (취소하면 기존 문서를 불러옵니다)')) {
         return loadDraft(existing)
+      }
+    }
+    if (!nameLocked) {
+      try {
+        localStorage.setItem('choice.teacherName', teacherName.trim())
+      } catch {
+        /* ignore */
       }
     }
     const base = { subjectId: subject.id, teacherName: teacherName.trim(), ranks }
@@ -211,11 +226,15 @@ export function Personal() {
                 value={teacherName}
                 onChange={(e) => setTeacherName(e.target.value)}
                 placeholder="홍길동"
-                readOnly={authEnabled}
-                title={authEnabled ? '승인된 계정 이름이 위원명으로 사용됩니다.' : undefined}
+                readOnly={nameLocked}
+                title={nameLocked ? '승인된 계정 이름이 위원명으로 사용됩니다.' : undefined}
               />
             </label>
-            {authEnabled && <p className="note" style={{ marginTop: 6 }}>로그인한 계정의 승인된 이름이 위원명으로 사용됩니다.</p>}
+            <p className="note" style={{ marginTop: 6 }}>
+              {nameLocked
+                ? '로그인한 계정의 승인된 이름이 위원명으로 사용됩니다.'
+                : '제출에는 로그인이 필요 없습니다. 작성한 문서는 이 브라우저에서만 다시 열 수 있으니 제출 전에 마무리해 주세요.'}
+            </p>
             <label className="field" style={{ marginTop: 10 }}>
               과목
               <SubjectSelect subjects={master.subjects} value={subjectId} onChange={(id) => { setSubjectId(id); setRanks([null, null, null]) }} />

@@ -19,7 +19,7 @@ const BookIcon = () => (
 
 function Shell() {
   const { ready, error, master, mode } = useAppData()
-  const { enabled: authEnabled, user, member, isAdmin, signOutUser, signIn, busy, pendingCount } = useAuth()
+  const { enabled: authEnabled, user, member, isAdmin, isAnonymous, signOutUser, signIn, busy, pendingCount } = useAuth()
   const [route, go] = useHashRoute()
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   const s = master.settings
@@ -53,10 +53,8 @@ function Shell() {
           {(!authEnabled || isAdmin) && nav('admin', '관리', true)}
         </nav>
         <div className="meta">
-          {(!authEnabled || user) && (
-            <span className={`badge ${mode !== 'local' ? 'ok' : 'warn'}`}>{mode === 'local' ? '브라우저 저장' : '온라인 공유'}</span>
-          )}
-          {authEnabled && member && (
+          <span className={`badge ${mode !== 'local' ? 'ok' : 'warn'}`}>{mode === 'local' ? '브라우저 저장' : '온라인 공유'}</span>
+          {authEnabled && !isAnonymous && member && (
             <span className="who">
               {user?.photoURL && <img className="avatar" src={user.photoURL} alt="" />}
               <strong>{member.displayName}</strong>
@@ -64,13 +62,13 @@ function Shell() {
             </span>
           )}
           {authEnabled ? (
-            user ? (
+            user && !isAnonymous ? (
               <button className="btn sm ghost" onClick={signOutUser}>
                 로그아웃
               </button>
             ) : (
-              <button className="btn sm primary" onClick={signIn} disabled={busy}>
-                {busy ? '진행 중…' : '로그인'}
+              <button className="btn sm" onClick={signIn} disabled={busy} title="총괄표·관리 화면은 로그인이 필요합니다">
+                {busy ? '진행 중…' : '총괄·관리 로그인'}
               </button>
             )
           ) : (
@@ -92,15 +90,13 @@ function Shell() {
       {route === '' && <Start go={go} />}
       {route === 'guide' && <Guide go={go} />}
       {route === 'personal' &&
-        guarded(
-          authEnabled ? (
+        (authEnabled ? (
+          <Personal />
+        ) : (
+          <Gate role="teacher" code={s.accessCode} title="개인서류 작성">
             <Personal />
-          ) : (
-            <Gate role="teacher" code={s.accessCode} title="개인서류 작성">
-              <Personal />
-            </Gate>
-          ),
-        )}
+          </Gate>
+        ))}
       {route === 'compile' &&
         guarded(
           authEnabled ? (

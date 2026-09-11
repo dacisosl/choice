@@ -7,7 +7,8 @@ export interface Store {
   mode: StorageMode
   getMaster(): Promise<Master | null>
   saveMaster(m: Master): Promise<void>
-  listEvaluations(): Promise<Evaluation[]>
+  /** ids를 주면 그 문서만 읽는다 (로그인하지 않은 교사는 본인 문서만 접근 가능) */
+  listEvaluations(ids?: string[]): Promise<Evaluation[]>
   saveEvaluation(e: Evaluation): Promise<void>
   deleteEvaluation(id: string): Promise<void>
   listSummaries(): Promise<Summary[]>
@@ -42,8 +43,9 @@ export class LocalStore implements Store {
   async saveMaster(m: Master) {
     lsSet(LS.master, m)
   }
-  async listEvaluations() {
-    return lsGet<Evaluation[]>(LS.evaluations, [])
+  async listEvaluations(ids?: string[]) {
+    const all = lsGet<Evaluation[]>(LS.evaluations, [])
+    return ids ? all.filter((e) => ids.includes(e.id)) : all
   }
   async saveEvaluation(e: Evaluation) {
     const list = await this.listEvaluations()
@@ -105,8 +107,9 @@ export class SupabaseStore implements Store {
   async saveMaster(m: Master) {
     await this.upsert('master', 'master', null, m)
   }
-  async listEvaluations() {
-    return this.listKind<Evaluation>('evaluation')
+  async listEvaluations(ids?: string[]) {
+    const all = await this.listKind<Evaluation>('evaluation')
+    return ids ? all.filter((e) => ids.includes(e.id)) : all
   }
   async saveEvaluation(e: Evaluation) {
     await this.upsert(e.id, 'evaluation', e.subjectId, e)
@@ -143,10 +146,17 @@ export class FirestoreStore implements Store {
     return new FirestoreStore(getDb(fs, app, cfg), fs, cfg.collection || 'docs')
   }
 
-  private async upsert(id: string, kind: string, subjectId: string | null, data: unknown) {
+  private async upsert(id: string, kind: string, subjectId: string | null, data: unknown, uid?: string) {
     // Firestore는 undefined 값을 허용하지 않으므로 JSON 왕복으로 제거
     const clean = JSON.parse(JSON.stringify(data))
-    await this.fs.setDoc(this.fs.doc(this.db, this.col, id), { kind, subject_id: subjectId, data: clean, updated_at: new Date().toISOString() })
+    // uid는 규칙에서 소유자를 판별하므로 최상위에 둔다
+    await this.fs.setDoc(this.fs.doc(this.db, this.col, id), {
+      kind,
+      subject_id: subjectId,
+      uid: uid ?? null,
+      data: clean,
+      updated_at: new Date().toISOString(),
+    })
   }
   private async listKind<T>(kind: string): Promise<T[]> {
     const q = this.fs.query(this.fs.collection(this.db, this.col), this.fs.where('kind', '==', kind))
@@ -161,11 +171,18 @@ export class FirestoreStore implements Store {
   async saveMaster(m: Master) {
     await this.upsert('master', 'master', null, m)
   }
-  async listEvaluations() {
+  async listEvaluations(ids?: string[]) {
+    // 승인되지 않은 사용자는 목록 조회 권한이 없으므로 본인 문서만 개별로 읽는다
+    if (ids) {
+      const snaps = await Promise.all(
+        ids.map((id) => this.fs.getDoc(this.fs.doc(this.db, this.col, id)).catch(() => null)),
+      )
+      return snaps.filter((s) => s && s.exists()).map((s) => s!.data()!.data as Evaluation)
+    }
     return this.listKind<Evaluation>('evaluation')
   }
   async saveEvaluation(e: Evaluation) {
-    await this.upsert(e.id, 'evaluation', e.subjectId, e)
+    await this.upsert(e.id, 'evaluation', e.subjectId, e, e.uid)
   }
   async deleteEvaluation(id: string) {
     await this.fs.deleteDoc(this.fs.doc(this.db, this.col, id))
@@ -189,6 +206,19 @@ export async function loadConfig(): Promise<AppConfig> {
   } catch {
     return {}
   }
+}
+
+/** 로그인하지 않은 교사가 자기 문서를 다시 찾을 수 있도록 id를 브라우저에 보관 */
+const MY_DOCS_KEY = 'choice.myDocs'
+export function getMyDocIds(): string[] {
+  return lsGet<string[]>(MY_DOCS_KEY, [])
+}
+export function addMyDocId(id: string): void {
+  const list = getMyDocIds()
+  if (!list.includes(id)) lsSet(MY_DOCS_KEY, [...list, id])
+}
+export function removeMyDocId(id: string): void {
+  lsSet(MY_DOCS_KEY, getMyDocIds().filter((x) => x !== id))
 }
 
 /** 관리 화면에서 브라우저별로 덮어쓴 Supabase 설정 */

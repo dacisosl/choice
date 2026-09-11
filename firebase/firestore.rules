@@ -1,26 +1,22 @@
 rules_version = '2';
 
 // ─────────────────────────────────────────────────────────────
-// 검·인정 교과용도서 선정 문서 작성 웹앱 — Firestore 규칙
+// 선정초안작성기 — Firestore 규칙
 //
-// ⚠ 기존 Firebase 프로젝트를 재사용하는 경우 이 파일을 통째로 붙여 넣지 마세요.
-//    아래 function 선언과 match 블록 두 개만 기존 규칙의
-//    match /databases/{database}/documents { … } 안에 복사해 넣어야
-//    다른 앱의 컬렉션이 막히지 않습니다.
+// 게시 위치: Firestore 화면 상단에서 데이터베이스 'choice' 를 고른 뒤 [규칙] 탭.
+//            (public/config.json 의 firebase.databaseId 와 같아야 함)
 //
-// 최초 관리자는 isOwner() 의 schoooolid@gmail.com 입니다.
-//    이 계정은 명단에 없어도 항상 관리자로 인정되어, 승인 권한을 잃는 사고를 막아 줍니다.
-//    바꾸려면 이 파일과 public/config.json 의 firebase.ownerEmail 을 함께 고치세요.
-//
-// 컬렉션 이름은 public/config.json 의 firebase.collection 과 같아야 합니다. (기본 choice_docs)
-// 이 규칙은 config.json 의 firebase.databaseId 로 지정한 데이터베이스(현재 'choice')의 규칙 탭에 게시합니다.
-// 앱 전용 DB를 따로 쓰므로 같은 프로젝트의 다른 앱((default) DB) 규칙과 섞이지 않습니다.
+// 권한 요약
+//  · 일반 교사  : 구글 로그인 없이 익명 세션으로 접속. 마스터 데이터를 읽고,
+//                본인 uid로 만든 개인 제출본(evaluation)만 읽기·쓰기·삭제.
+//  · 승인 구성원: 구글 로그인 + 관리자 승인. 전체 목록 조회와 총괄표(summary) 작성.
+//  · 관리자     : 마스터 데이터 수정, 회원 승인, 모든 문서 관리.
+//  · 최초 관리자: isOwner() 의 이메일. 명단에 없어도 항상 관리자.
 // ─────────────────────────────────────────────────────────────
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── 여기부터 ────────────────────────────────────────────
     function isSignedIn() {
       return request.auth != null;
     }
@@ -40,11 +36,9 @@ service cloud.firestore {
     function isAdmin() {
       return isOwner() || (isApproved() && memberData().role == 'admin');
     }
-    // 마스터 데이터는 관리자만, 개인 제출본은 본인만, 총괄표는 승인된 구성원이 작성
-    function canWrite(d) {
-      return isAdmin()
-        || d.kind == 'summary'
-        || (d.kind == 'evaluation' && d.data.uid == request.auth.uid);
+    // 문서 최상위 uid 가 현재 사용자와 같은가 (익명 세션 포함)
+    function mine(d) {
+      return isSignedIn() && d.uid == request.auth.uid;
     }
 
     // 구성원 명단: 본인 문서는 스스로 만들되 대기 상태로만, 승인·권한 변경은 관리자만
@@ -64,19 +58,26 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 앱 데이터: 승인된 구성원만 읽고, 쓰기는 위 canWrite 규칙을 따른다
     match /choice_docs/{docId} {
-      allow read: if isApproved();
-      allow create: if isApproved() && canWrite(request.resource.data);
-      allow update: if isApproved() && canWrite(request.resource.data) && canWrite(resource.data);
-      allow delete: if isApproved() && canWrite(resource.data);
-    }
-    // ── 여기까지 ────────────────────────────────────────────
+      // 마스터(과목·출판사·평가기준)는 서식을 채우는 데 필요하므로 접속자 모두 읽기 가능.
+      // 개인 제출본은 본인 것만, 그 외 문서는 승인된 구성원만 읽는다.
+      allow get: if isSignedIn() && (docId == 'master' || isApproved() || mine(resource.data));
 
-    // 아래 한 줄은 이 앱 전용 새 프로젝트에서만 사용하세요.
-    // 기존 프로젝트에 붙여 넣으면 다른 앱의 컬렉션이 모두 막힙니다.
-    match /{document=**} {
-      allow read, write: if false;
+      // 목록 조회(다른 교사의 제출본 열람)는 승인된 구성원만.
+      // 로그인하지 않은 교사는 브라우저에 보관한 문서 id로 개별 조회만 한다.
+      allow list: if isApproved();
+
+      allow create: if isAdmin()
+                    || (isApproved() && request.resource.data.kind == 'summary')
+                    || (request.resource.data.kind == 'evaluation' && mine(request.resource.data));
+
+      allow update: if isAdmin()
+                    || (isApproved() && resource.data.kind == 'summary' && request.resource.data.kind == 'summary')
+                    || (resource.data.kind == 'evaluation' && mine(resource.data) && mine(request.resource.data));
+
+      allow delete: if isAdmin()
+                    || (isApproved() && resource.data.kind == 'summary')
+                    || (resource.data.kind == 'evaluation' && mine(resource.data));
     }
   }
 }
