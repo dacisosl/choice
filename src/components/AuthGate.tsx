@@ -13,7 +13,7 @@ const GoogleMark = () => (
 
 /** 구글 로그인 + 관리자 승인 게이트. Firebase 설정이 없으면 그대로 통과한다. */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, enterLocalOnly, isOwner } = useAuth()
+  const { ready, enabled, user, member, error, busy, signIn, signOutUser, submitProfile, reloadMember, enterLocalOnly, isOwner, ownerEmail } = useAuth()
   const [name, setName] = useState('')
 
   if (!enabled) return <>{children}</>
@@ -76,6 +76,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
             </button>
           </div>
           {error && <div className="alert error" style={{ marginTop: 14 }}>{error}</div>}
+          {error && error.includes('permission') && (
+            <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>
+              Firestore 규칙에 <code>choice_members</code> 블록이 게시되지 않았을 수 있습니다.
+            </p>
+          )}
         </div>
       </div>
     )
@@ -101,6 +106,22 @@ export function AuthGate({ children }: { children: ReactNode }) {
           </div>
           <p className="muted small" style={{ marginTop: 10 }}>신청 {fmtDate(member.requestedAt)}</p>
           {rejected && member.note && <div className="alert warn" style={{ marginTop: 12 }}>{member.note}</div>}
+          <details className="diag">
+            <summary>관리자인데 이 화면이 보이나요?</summary>
+            <div>
+              로그인한 계정 <b>{user.email}</b>
+            </div>
+            <div>
+              지정된 최초 관리자 <b>{ownerEmail || '(설정 없음)'}</b>
+            </div>
+            <p style={{ margin: '8px 0 0' }}>
+              {!ownerEmail
+                ? '설정 파일에 최초 관리자가 지정되어 있지 않습니다.'
+                : ownerEmail !== user.email.toLowerCase()
+                  ? '두 주소가 다릅니다. 지정된 계정으로 다시 로그인하세요.'
+                  : '주소는 일치합니다. 브라우저가 예전 화면을 기억하고 있을 수 있으니 Ctrl+Shift+R 로 새로고침하세요.'}
+            </p>
+          </details>
           <div className="actions" style={{ justifyContent: 'center' }}>
             <button className="btn" onClick={signOutUser}>
               로그아웃

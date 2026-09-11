@@ -24,6 +24,8 @@ export interface AuthContextValue {
   isAdmin: boolean
   /** config의 ownerEmail과 같은 계정 — 승인 없이 관리자 */
   isOwner: boolean
+  /** config에 설정된 최초 관리자 주소 (진단 표시용) */
+  ownerEmail: string
   /** 로그인을 건너뛴 예비 모드 */
   localOnly: boolean
   enterLocalOnly: () => void
@@ -270,6 +272,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isApproved: !enabled || isOwner || member?.status === 'approved',
       isAdmin: !enabled || isOwner || (member?.status === 'approved' && member.role === 'admin'),
       isOwner,
+      ownerEmail,
       localOnly,
       enterLocalOnly: () => {
         writeLocalOnly(true)
@@ -289,7 +292,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       saveMember,
       deleteMember,
     }),
-    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember],
+    [ready, enabled, config, user, member, error, busy, localOnly, isOwner, ownerEmail, signIn, signOutUser, submitProfile, reloadMember, listMembers, saveMember, deleteMember],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
