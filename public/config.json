@@ -2,16 +2,16 @@
   "schoolName": "해밀고등학교",
   "year": 2027,
 
-  "_comment": "아래 둘 중 하나만 채우면 온라인 공유 모드로 동작합니다. 둘 다 비어 있으면 브라우저 저장 모드.",
+  "_comment": "Supabase 또는 firebase 중 하나만 채우면 온라인 공유 모드로 동작합니다. 둘 다 비어 있으면 브라우저 저장 모드.",
 
   "supabaseUrl": "",
   "supabaseAnonKey": "",
 
   "firebase": {
-    "apiKey": "",
-    "authDomain": "",
-    "projectId": "",
-    "appId": "",
+    "apiKey": "AIzaSyBx37L145oA0O3Ls0hI1bd722FVMseRvfw",
+    "authDomain": "edit-help.firebaseapp.com",
+    "projectId": "edit-help",
+    "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
     "collection": "choice_docs"
   }
 }
