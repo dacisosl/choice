@@ -62,6 +62,30 @@ function writeLocalOnly(v: boolean): void {
   }
 }
 
+/**
+ * 최초 관리자(ownerEmail) 계정이면 명단 문서를 승인·관리자 상태로 맞춘다.
+ * 규칙에서 isOwner()는 update 를 허용하므로 콘솔 작업 없이 스스로 승격된다.
+ */
+async function promoteOwnerIfNeeded(
+  fs: Fs,
+  db: import('firebase/firestore').Firestore,
+  email: string,
+  ownerEmail: string | undefined,
+  m: Member | null,
+): Promise<Member | null> {
+  if (!m || !ownerEmail) return m
+  if (email.toLowerCase() !== ownerEmail.trim().toLowerCase()) return m
+  if (m.status === 'approved' && m.role === 'admin') return m
+  const next: Member = { ...m, status: 'approved', role: 'admin', decidedAt: new Date().toISOString() }
+  try {
+    await fs.setDoc(fs.doc(db, MEMBERS_COLLECTION, m.uid), JSON.parse(JSON.stringify(next)))
+    return next
+  } catch (e) {
+    console.warn('최초 관리자 자동 승격 실패', e)
+    return m
+  }
+}
+
 /** 구글 로그인 오류 코드를 사람이 읽는 문장으로 */
 function authErrorText(e: unknown): string {
   const code = (e as { code?: string }).code || ''
@@ -141,7 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const snap = await fs.getDoc(fs.doc(db, MEMBERS_COLLECTION, u.uid))
             if (cancelled) return
-            setMember(snap.exists() ? (snap.data() as Member) : null)
+            const m0 = snap.exists() ? (snap.data() as Member) : null
+            setMember(await promoteOwnerIfNeeded(fs, db, u.email || '', cfg.firebase?.ownerEmail, m0))
             setError(null)
           } catch (e) {
             setMember(null)
@@ -211,14 +236,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           requestedAt: new Date().toISOString(),
         }
         await fs.setDoc(fs.doc(db, MEMBERS_COLLECTION, user.uid), next)
-        setMember(await fetchMember(user.uid))
+        setMember(await promoteOwnerIfNeeded(fs, db, user.email, config.firebase?.ownerEmail, await fetchMember(user.uid)))
       } catch (e) {
         setError(`가입 신청 실패: ${(e as Error).message}`)
       } finally {
         setBusy(false)
       }
     },
-    [user, getFs, fetchMember],
+    [user, getFs, fetchMember, config],
   )
 
   const reloadMember = useCallback(async () => {

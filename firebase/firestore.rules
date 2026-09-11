@@ -35,7 +35,7 @@ service cloud.firestore {
       return get(memberPath()).data;
     }
     function isApproved() {
-      return isSignedIn() && exists(memberPath()) && memberData().status == 'approved';
+      return isOwner() || (isSignedIn() && exists(memberPath()) && memberData().status == 'approved');
     }
     function isAdmin() {
       return isOwner() || (isApproved() && memberData().role == 'admin');
