@@ -1,13 +1,24 @@
 rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────
 // 검·인정 교과용도서 선정 문서 작성 웹앱 — Firestore 규칙
-// 학교 내부용: 앱 진입은 접속 코드로 제어하고, DB는 docs 컬렉션만 읽기/쓰기 허용
+//
+// ⚠ 기존 Firebase 프로젝트를 재사용하는 경우 이 파일을 통째로 붙여 넣지 마세요.
+//    아래 "추가할 블록"만 기존 규칙의 match /databases/{database}/documents { … } 안에
+//    복사해 넣어야 다른 앱의 컬렉션이 막히지 않습니다.
+//
+// 컬렉션 이름은 public/config.json 의 firebase.collection 과 같아야 합니다. (기본 choice_docs)
+// ─────────────────────────────────────────────────────────────
+
+// ── 추가할 블록 (기존 프로젝트 재사용 시 이 3줄만 복사) ──
+//     match /choice_docs/{docId} {
+//       allow read, write: if true;
+//     }
+
+// ── 아래는 이 앱 전용으로 새 프로젝트를 만들었을 때 쓰는 전체 규칙 ──
 service cloud.firestore {
   match /databases/{database}/documents {
-    // config.json 의 firebase.collection 과 같은 이름이어야 함 (기본 docs, 기존 프로젝트 공유 시 choice_docs 등)
     match /choice_docs/{docId} {
-      allow read, write: if true;
-    }
-    match /docs/{docId} {
       allow read, write: if true;
     }
     match /{document=**} {
