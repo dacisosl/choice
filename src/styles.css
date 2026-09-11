@@ -213,6 +213,18 @@ input[type='checkbox'] { accent-color: var(--primary); }
 .stats-line b { color: var(--text-2); font-weight: 600; }
 .start-note { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 20px; }
 
+
+/* 시안 이미지 히어로 (public/hero.png 가 있을 때). 이미지 상단 62px(자체 내비)은 잘라 낸다 */
+.hero-image { padding: 0 0 10px; }
+.hero-img-wrap { position: relative; width: 100%; overflow: hidden; margin: 0 auto; max-width: 1440px; }
+.hero-img-wrap img { display: block; width: 100%; height: auto; margin-top: -3.9%; }
+.hotspot { position: absolute; background: transparent; border: none; cursor: pointer; border-radius: 999px; }
+.hotspot:focus-visible { outline: 3px solid rgba(47, 93, 75, 0.5); }
+/* 버튼: 이미지 기준 가로 중앙(50%), 세로 (831-62)/930 ≈ 82.7%, 크기 24% × 5.6% */
+.cta-hot { left: 38%; width: 24%; top: 79.9%; height: 5.6%; }
+.cta-hot:hover { box-shadow: 0 0 0 4px rgba(47, 93, 75, 0.18); }
+.hero-image .role-links { margin-top: 10px; }
+
 /* 단계 표시 (세그먼트) */
 .steps { display: inline-flex; gap: 4px; padding: 4px; background: var(--sur-hover); border-radius: 999px; margin-bottom: 18px; flex-wrap: wrap; }
 .steps-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }

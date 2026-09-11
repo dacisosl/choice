@@ -1,4 +1,18 @@
+import { useEffect, useState } from 'react'
 import { useAppData } from '../store/useAppData'
+
+/** public/hero.png 가 있으면 시안 이미지를 그대로 첫 화면에 사용한다 */
+const HERO_URL = `${import.meta.env.BASE_URL}hero.png`
+function useHeroImage(): boolean | null {
+  const [ok, setOk] = useState<boolean | null>(null)
+  useEffect(() => {
+    const img = new Image()
+    img.onload = () => setOk(true)
+    img.onerror = () => setOk(false)
+    img.src = HERO_URL
+  }, [])
+  return ok
+}
 
 /** 앞 책: 크림 표지 + 초록 언덕·나무·해·학교 */
 function FrontCoverArt() {
@@ -85,6 +99,41 @@ export function Start({ go }: { go: (h: string) => void }) {
   const submitted = evaluations.filter((e) => e.status === 'submitted').length
   const finalized = summaries.filter((s) => s.status === 'finalized').length
   const openSubjects = master.subjects.filter((s) => master.publishers.filter((p) => p.subjectId === s.id).length > 1).length
+  const heroImg = useHeroImage()
+
+  if (heroImg === null) return <section className="hero" style={{ minHeight: 600 }} />
+
+  if (heroImg) {
+    return (
+      <section className="hero hero-image">
+        <div className="hero-img-wrap">
+          <img src={HERO_URL} alt="교과서 선정 서류, 초안부터 간편하게" />
+          {/* 이미지 속 버튼 위치에 실제 클릭 영역을 겹친다 */}
+          <button className="hotspot cta-hot" onClick={() => go('personal')} aria-label="서류 초안 작성하기" />
+        </div>
+        <div className="role-links">
+          <span>
+            총괄 작성 교사이신가요? <button onClick={() => go('compile')}>평가총괄표 작성 →</button>
+          </span>
+          <span>
+            담당 교사이신가요? <button onClick={() => go('admin')}>관리 →</button>
+          </span>
+        </div>
+        <div className="stats-line">
+          <span>
+            작성 가능 과목 <b>{openSubjects}</b>
+          </span>
+          <span>
+            제출 <b>{submitted}</b>건
+          </span>
+          <span>
+            총괄 확정 <b>{finalized}</b>과목
+          </span>
+          <span>{mode === 'local' ? '이 브라우저 저장 모드' : '온라인 공유 모드'}</span>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="hero">
