@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
-/** public/hero.png 가 있으면 사진을 배경으로 쓴다 (문구가 없는 책·책상 부분만 잘라서 사용) */
-const HERO_URL = `${import.meta.env.BASE_URL}hero.png`
+/** 문구·버튼이 없는 책·책상 부분만 잘라 둔 사진 (public/hero-band.png) */
+const HERO_URL = `${import.meta.env.BASE_URL}hero-band.png`
 function useHeroImage(): boolean | null {
   const [ok, setOk] = useState<boolean | null>(null)
   useEffect(() => {
