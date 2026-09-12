@@ -3,20 +3,30 @@ import { DEFAULT_SETTINGS, seedMaster } from '../seed'
 import { criteriaFor, publishersFor } from '../lib/scoring'
 
 /** 예전 구조(접속 코드·위원 명단·과목 마감 등)의 마스터를 현재 구조로 정리한다 */
+/**
+ * 저장 구조 버전.
+ * 3 = 과목·출판사를 학교 계정에서 받도록 바꾸면서, 각 컴퓨터에 남아 있던 예전 목록을 한 번 비운다.
+ */
+const DATA_VERSION = 3
+
 export function migrateMaster(raw: unknown): Master {
   const base = seedMaster()
   if (!raw || typeof raw !== 'object') return base
   const m = raw as Partial<Master> & { committee?: unknown; settings?: Partial<Settings> & Record<string, unknown> }
   const s = { ...DEFAULT_SETTINGS, ...(m.settings || {}) } as Settings & Record<string, unknown>
   for (const k of ['accessCode', 'compilerCode', 'adminCode']) delete s[k]
+  // 예전 버전에서 이 컴퓨터에 넣어 둔 과목·출판사는 한 번만 비운다
+  const stale = (m.version || 0) < DATA_VERSION
   return {
-    version: 2,
+    version: DATA_VERSION,
     settings: s as Settings,
-    subjects: (m.subjects || []).map((x) => {
-      const { status: _s, ...rest } = x as typeof x & { status?: unknown }
-      return rest
-    }),
-    publishers: m.publishers || [],
+    subjects: stale
+      ? []
+      : (m.subjects || []).map((x) => {
+          const { status: _s, ...rest } = x as typeof x & { status?: unknown }
+          return rest
+        }),
+    publishers: stale ? [] : m.publishers || [],
     criteria: m.criteria && m.criteria.length ? m.criteria : base.criteria,
     opinionOptions: m.opinionOptions && m.opinionOptions.length ? m.opinionOptions : base.opinionOptions,
     updatedAt: m.updatedAt || base.updatedAt,

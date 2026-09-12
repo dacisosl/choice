@@ -15,6 +15,8 @@ type Firestore = import('firebase/firestore').Firestore
 let appPromise: Promise<FirebaseApp> | null = null
 
 export const SCHOOLS_COLLECTION = 'schools'
+/** 학교 아이디 목록(운영자용). 과목·출판사 내용은 넣지 않는다 */
+export const SCHOOL_INDEX_COLLECTION = 'school_index'
 
 export interface SchoolDoc {
   schoolId: string
@@ -29,6 +31,16 @@ export interface SchoolDoc {
 export interface AccountUser {
   uid: string
   email: string
+}
+
+/** 운영자 화면에 보이는 학교 정보. 과목·출판사 내용은 담지 않는다 */
+export interface SchoolIndexEntry {
+  schoolId: string
+  schoolName: string
+  ownerUid: string
+  ownerEmail: string
+  createdAt: string
+  updatedAt: string
 }
 
 export function hasFirebaseConfig(cfg?: FirebaseConfig | null): cfg is FirebaseConfig {
@@ -95,19 +107,37 @@ export async function subscribeSchool(
 /** 소유자만 호출한다. undefined 는 Firestore가 거부하므로 JSON 왕복으로 제거 */
 export async function saveSchoolData(cfg: FirebaseConfig, schoolId: string, data: { schoolName?: string; subjects: Subject[]; publishers: Publisher[] }): Promise<void> {
   const { fs, db } = await getStore(cfg)
-  const clean = JSON.parse(JSON.stringify({ ...data, updatedAt: new Date().toISOString() }))
+  const updatedAt = new Date().toISOString()
+  const clean = JSON.parse(JSON.stringify({ ...data, updatedAt }))
   await fs.setDoc(fs.doc(db, SCHOOLS_COLLECTION, schoolId), clean, { merge: true })
+  try {
+    await fs.setDoc(fs.doc(db, SCHOOL_INDEX_COLLECTION, schoolId), { schoolName: data.schoolName || '', updatedAt }, { merge: true })
+  } catch {
+    /* 목록 갱신 실패는 무시 */
+  }
 }
 
-export async function createSchool(cfg: FirebaseConfig, doc: SchoolDoc): Promise<void> {
+export async function createSchool(cfg: FirebaseConfig, doc: SchoolDoc, ownerEmail: string): Promise<void> {
   const { fs, db } = await getStore(cfg)
-  const clean = JSON.parse(JSON.stringify(doc))
-  await fs.setDoc(fs.doc(db, SCHOOLS_COLLECTION, doc.schoolId), clean)
+  await fs.setDoc(fs.doc(db, SCHOOLS_COLLECTION, doc.schoolId), JSON.parse(JSON.stringify(doc)))
+  await fs.setDoc(fs.doc(db, SCHOOL_INDEX_COLLECTION, doc.schoolId), {
+    schoolId: doc.schoolId,
+    schoolName: doc.schoolName,
+    ownerUid: doc.ownerUid,
+    ownerEmail,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  })
 }
 
 export async function deleteSchool(cfg: FirebaseConfig, schoolId: string): Promise<void> {
   const { fs, db } = await getStore(cfg)
   await fs.deleteDoc(fs.doc(db, SCHOOLS_COLLECTION, schoolId))
+  try {
+    await fs.deleteDoc(fs.doc(db, SCHOOL_INDEX_COLLECTION, schoolId))
+  } catch (e) {
+    console.warn('학교 목록 항목 삭제 실패', e)
+  }
 }
 
 // ───────────── 계정 ─────────────
@@ -162,6 +192,37 @@ export async function deleteAccount(cfg: FirebaseConfig, currentPassword: string
     }
   }
   await auth.deleteUser(u)
+}
+
+// ───────────── 운영자(최종 관리자) ─────────────
+
+export function isSuperAdmin(cfg: FirebaseConfig, email: string | null | undefined): boolean {
+  if (!email) return false
+  const list = (cfg.superAdmins || []).map((e) => e.trim().toLowerCase()).filter(Boolean)
+  return list.includes(email.trim().toLowerCase())
+}
+
+/** 운영자 전용 구글 로그인 (학교 담당자 계정은 이메일·비밀번호를 쓴다) */
+export async function signInWithGoogle(cfg: FirebaseConfig): Promise<void> {
+  const { auth, a } = await getAuth(cfg)
+  const provider = new auth.GoogleAuthProvider()
+  provider.setCustomParameters({ prompt: 'select_account' })
+  try {
+    await auth.signInWithPopup(a, provider)
+  } catch (e) {
+    const code = (e as { code?: string }).code || ''
+    if (code.includes('popup-blocked') || code.includes('operation-not-supported')) await auth.signInWithRedirect(a, provider)
+    else throw e
+  }
+}
+
+/** 학교 아이디 목록. 과목·출판사 내용은 이 컬렉션에 없다 */
+export async function listSchools(cfg: FirebaseConfig): Promise<SchoolIndexEntry[]> {
+  const { fs, db } = await getStore(cfg)
+  const snap = await fs.getDocs(fs.collection(db, SCHOOL_INDEX_COLLECTION))
+  return snap.docs
+    .map((d) => d.data() as SchoolIndexEntry)
+    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
 }
 
 /** Firebase 오류 코드를 사람이 읽는 문장으로 */

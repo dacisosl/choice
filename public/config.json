@@ -10,6 +10,9 @@
     "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
 
     "_databaseId": "Firestore 데이터베이스 ID. 비우면 (default).",
-    "databaseId": "choice"
+    "databaseId": "choice",
+
+    "_superAdmins": "서비스 운영자(최종 관리자) 구글 계정. 숨은 주소 #/root 로 들어가 학교 아이디를 관리합니다. firebase/firestore.rules 의 isSuperAdmin() 목록과 같아야 합니다.",
+    "superAdmins": ["schoooolid@gmail.com"]
   }
 }

@@ -13,7 +13,9 @@ import {
   normalizeSchoolId,
   saveSchoolData,
   sendReset as fbSendReset,
+  isSuperAdmin as isSuperAdminEmail,
   signIn as fbSignIn,
+  signInWithGoogle,
   signOutAccount,
   signUp as fbSignUp,
   subscribeSchool,
@@ -50,6 +52,9 @@ export interface AppData {
   attachSchool: (id: string) => Promise<boolean>
   detachSchool: () => void
   signUp: (v: { email: string; password: string; schoolId: string; schoolName: string }) => Promise<boolean>
+  /** 운영자(최종 관리자) 구글 로그인 */
+  signInGoogle: () => Promise<boolean>
+  isSuperAdmin: boolean
   signIn: (email: string, password: string) => Promise<boolean>
   signOut: () => Promise<void>
   sendReset: (email: string) => Promise<boolean>
@@ -109,7 +114,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
       const rawMaster = loadMaster()
       const m = rawMaster ? migrateMaster(rawMaster) : seedMaster({ schoolName: cfg.schoolName, year: cfg.year })
-      if (!rawMaster) saveMasterLocal(m)
+      // 정리한 결과(예전 과목·출판사 비우기 포함)를 바로 저장해 둔다
+      saveMasterLocal(m)
       masterRef.current = m
       setMaster(m)
       setEvaluations(loadEvaluations().map((e) => migrateEvaluation(e, m)).filter((e): e is Evaluation => !!e))
@@ -179,6 +185,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const isOwner = !!(user && school && school.ownerUid === user.uid)
   const accountEnabled = hasFirebaseConfig(config.firebase)
+  const superAdmin = accountEnabled && isSuperAdminEmail(config.firebase!, user?.email)
   ownerRef.current = { schoolId, canWrite: isOwner }
 
   /** 모아 둔 과목·출판사 변경을 학교 문서에 보낸다 */
@@ -267,7 +274,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           createdAt: now,
           updatedAt: now,
         }
-        await createSchool(cfg.firebase!, doc)
+        await createSchool(cfg.firebase!, doc, u.email)
         return doc
       })
       if (!res) return false
@@ -343,6 +350,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [run, school, user],
   )
 
+  const signInGoogle = useCallback(async (): Promise<boolean> => {
+    const cfg = configRef.current
+    if (!hasFirebaseConfig(cfg.firebase)) return false
+    const r = await run(async () => {
+      await signInWithGoogle(cfg.firebase!)
+      return true
+    })
+    return !!r
+  }, [run])
+
   const clearAuthError = useCallback(() => setAuthError(null), [])
 
   const saveMaster = useCallback(
@@ -416,6 +433,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       accountEnabled,
       user,
       isOwner,
+      isSuperAdmin: superAdmin,
       busy,
       authError,
       attachSchool,
@@ -423,6 +441,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signOut,
+      signInGoogle,
       sendReset,
       changePassword,
       deleteAccount,
@@ -434,7 +453,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteSummary,
       resetMaster,
     }),
-    [ready, config, master, evaluations, summaries, schoolStatus, schoolId, school, schoolError, accountEnabled, user, isOwner, busy, authError, attachSchool, detachSchool, signUp, signIn, signOut, sendReset, changePassword, deleteAccount, clearAuthError, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, resetMaster],
+    [ready, config, master, evaluations, summaries, schoolStatus, schoolId, school, schoolError, accountEnabled, user, isOwner, superAdmin, busy, authError, attachSchool, detachSchool, signUp, signIn, signOut, signInGoogle, sendReset, changePassword, deleteAccount, clearAuthError, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, resetMaster],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

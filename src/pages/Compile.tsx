@@ -24,8 +24,8 @@ function totalOf(member: SummaryMember, pubName: string): number | null {
   return columnTotal(ev.scores[pub.id], ev.criteria)
 }
 
-export function Compile() {
-  const { master, summaries, saveSummary, deleteSummary } = useAppData()
+export function Compile({ go }: { go: (h: string) => void }) {
+  const { master, summaries, saveSummary, deleteSummary, schoolStatus } = useAppData()
   const [step, setStep] = useState(0)
   const [writerName, setWriterName] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -267,29 +267,42 @@ export function Compile() {
         </div>
       )}
 
-      {step === 0 && (
-        <>
-          <div className="card">
-            <div className="basic-row">
-              <label className="field">
-                작성자 이름
-                <input type="text" value={writerName} onChange={(e) => setWriterName(e.target.value)} placeholder="홍길동" />
-              </label>
-              <label className="field">
-                과목
-                <SubjectSelect subjects={master.subjects} value={subjectId} onChange={(id) => { setSubjectId(id); setSubjectName(master.subjects.find((s) => s.id === id)?.name || '') }} />
-              </label>
-              {!subjectId && (
-                <label className="field">
-                  목록에 없으면 과목명 직접 입력
-                  <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
-                </label>
-              )}
+      <div className="work-layout">
+        {/* 왼쪽: 입력 사이드바 */}
+        <aside className="work-side no-print">
+          {schoolStatus !== 'ok' && (
+            <div className="card side-card school-tip">
+              <b>로그인 없이도 작성할 수 있어요.</b>
+              <p>학교 아이디로 연결하면 과목과 출판사가 자동으로 채워져 훨씬 손쉽게 작성할 수 있습니다.</p>
+              <button className="btn sm" onClick={() => go('settings')}>
+                학교 아이디 연결하기
+              </button>
             </div>
+          )}
+          <div className="card side-card">
+            <h3>기본정보</h3>
+            <label className="field">
+              작성자 이름
+              <input type="text" value={writerName} onChange={(e) => setWriterName(e.target.value)} placeholder="홍길동" />
+            </label>
+            <label className="field">
+              과목
+              {master.subjects.length > 0 ? (
+                <SubjectSelect subjects={master.subjects} value={subjectId} onChange={(id) => { setSubjectId(id); setSubjectName(master.subjects.find((s) => s.id === id)?.name || '') }} />
+              ) : (
+                <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
+              )}
+            </label>
+            {master.subjects.length > 0 && !subjectId && (
+              <label className="field">
+                목록에 없으면 직접 입력
+                <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
+              </label>
+            )}
 
-            <h3 style={{ marginTop: 14 }}>위원 개인 평가표 올리기</h3>
+            <h3 style={{ marginTop: 16 }}>위원 평가표 ({members.length})</h3>
             <div
-              className={`dropzone ${dragOver ? 'over' : ''}`}
+              className={`dropzone sm ${dragOver ? 'over' : ''}`}
               onDragOver={(e) => {
                 e.preventDefault()
                 setDragOver(true)
@@ -301,234 +314,267 @@ export function Compile() {
                 addFiles(e.dataTransfer.files)
               }}
             >
-              <p>위원들이 보낸 <b>선정 평가표 PDF</b>를 여기에 끌어다 놓으세요.</p>
-              <label className="btn primary">
-                + 추가하기 (PDF·JSON, 여러 개)
+              <p>평가표 PDF를 끌어다 놓거나</p>
+              <label className="btn primary sm">
+                + 추가하기
                 <input type="file" accept="application/pdf,.pdf,application/json,.json" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
               </label>
             </div>
 
             {members.length > 0 && (
-              <table className="data" style={{ marginTop: 12 }}>
-                <thead>
-                  <tr>
-                    <th>위원</th>
-                    <th style={{ width: 70 }}>출처</th>
-                    <th style={{ width: 70 }}>출판사</th>
-                    <th>확인할 점</th>
-                    <th style={{ width: 60 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map((m) => (
-                    <tr key={m.id}>
-                      <td>{m.teacherName}</td>
-                      <td>
-                        {m.source === 'pdf' && <span className="badge ok">PDF</span>}
-                        {m.source === 'pdf-ocr' && <span className="badge warn">스캔</span>}
-                        {m.source === 'json' && <span className="badge info">파일</span>}
-                        {m.source === 'manual' && <span className="badge gray">직접</span>}
-                      </td>
-                      <td>{m.evaluation?.publishers.length ?? '-'}</td>
-                      <td className="small muted">{m.warnings.length ? m.warnings.join(' ') : '-'}</td>
-                      <td>
-                        <button className="btn sm danger" onClick={() => removeMember(m.id)}>
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="side-members">
+                {members.map((m) => (
+                  <div className="side-doc" key={m.id}>
+                    <div>
+                      <b>{m.teacherName}</b>{' '}
+                      {m.source === 'pdf' && <span className="badge ok">PDF</span>}
+                      {m.source === 'pdf-ocr' && <span className="badge warn">스캔</span>}
+                      {m.source === 'json' && <span className="badge info">파일</span>}
+                      {m.source === 'manual' && <span className="badge gray">직접</span>}
+                      {m.warnings.length > 0 && <div className="muted small">확인 필요</div>}
+                    </div>
+                    <button className="icon-x" onClick={() => removeMember(m.id)} aria-label="삭제" title="삭제">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
 
-            <div className="actions">
-              <button className="btn sm" onClick={addManual}>
-                위원 직접 추가 (점수 수기 입력)
-              </button>
-              <label className="btn sm">
-                총괄표 파일(JSON) 불러오기
-                <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importSummaryJson(e.target.files)} />
-              </label>
-              <span className="spacer" />
-              <button className="btn primary lg" onClick={generate} disabled={!members.length}>
-                총괄표 생성하기
-              </button>
-            </div>
-          </div>
-
-          {summaries.length > 0 && (
-            <div className="card">
-              <h2>이 컴퓨터의 총괄표</h2>
-              <table className="data">
-                <tbody>
-                  {summaries.map((s) => (
-                    <tr key={s.id}>
-                      <td>{s.subjectName}</td>
-                      <td className="small">위원 {s.members.length}명</td>
-                      <td className="small">{fmtDate(s.updatedAt)}</td>
-                      <td style={{ width: 130 }}>
-                        <button className="btn sm" onClick={() => loadExisting(s)}>
-                          열기
-                        </button>{' '}
-                        <button className="btn sm danger" onClick={() => removeSaved(s)}>
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
-      )}
-
-      {sum && step === 1 && (
-        <div>
-          <div className="card">
-            <h2>평가 총괄표 (서식2)</h2>
-            <p className="muted small">셀을 클릭하면 점수를 고칠 수 있고 총점·평균·순위가 다시 계산됩니다. 위원 이름을 누르면 올린 평가표 원본을 볼 수 있습니다.</p>
-            <div className="actions" style={{ marginTop: 0 }}>
-              <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <input type="checkbox" checked={sortByAvg} onChange={(e) => setSortByAvg(e.target.checked)} /> 평균 내림차순 정렬
-              </label>
-              {sum.members
-                .filter((m) => m.evaluation)
-                .map((m) => (
-                  <button key={m.id} className="btn sm" onClick={() => setViewMember(viewMember?.id === m.id ? null : m)}>
-                    {m.teacherName} 원본
+            <div className="side-actions">
+              {step === 0 && (
+                <>
+                  <button className="btn primary" onClick={generate} disabled={!members.length}>
+                    총괄표 생성하기
                   </button>
-                ))}
-            </div>
-            <div className="sheet-wrap">
-              <Form2Sheet
-                subjectName={sum.subjectName}
-                publishers={sum.publishers}
-                members={memberCols}
-                matrix={sum.matrix}
-                headerMode={master.settings.memberHeaderMode}
-                decimals={master.settings.averageDecimals}
-                writer={sum.writer}
-                checker={sum.checker}
-                sortByAverage={sortByAvg}
-                onCellChange={(pid, mid, v) => update({ matrix: { ...sum.matrix, [pid]: { ...(sum.matrix[pid] || {}), [mid]: v } } })}
-              />
-            </div>
-            <div className="row">
-              <label className="field">
-                작성자 직
-                <input type="text" value={sum.writer.position} onChange={(e) => update({ writer: { ...sum.writer, position: e.target.value } })} />
-              </label>
-              <label className="field">
-                작성자 성명
-                <input type="text" value={sum.writer.name} onChange={(e) => update({ writer: { ...sum.writer, name: e.target.value } })} />
-              </label>
-              <label className="field">
-                확인자 직
-                <input type="text" value={sum.checker.position} onChange={(e) => update({ checker: { ...sum.checker, position: e.target.value } })} />
-              </label>
-              <label className="field">
-                확인자 성명
-                <input type="text" value={sum.checker.name} onChange={(e) => update({ checker: { ...sum.checker, name: e.target.value } })} />
-              </label>
+                  <button className="btn sm" onClick={addManual}>
+                    위원 직접 추가
+                  </button>
+                  <label className="btn sm">
+                    총괄표 파일(JSON) 불러오기
+                    <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importSummaryJson(e.target.files)} />
+                  </label>
+                </>
+              )}
+              {step === 1 && (
+                <>
+                  <button className="btn" onClick={() => setStep(0)}>
+                    이전
+                  </button>
+                  <button className="btn primary" onClick={() => setStep(2)}>
+                    다음: 인쇄·저장
+                  </button>
+                </>
+              )}
+              {step === 2 && sum && (
+                <>
+                  <button className="btn" onClick={() => setStep(1)}>
+                    이전
+                  </button>
+                  <button className="btn primary" onClick={() => printSheets(undefined, `총괄서류_${sum.subjectName}`)}>
+                    인쇄 / PDF 저장
+                  </button>
+                  <button className="btn" onClick={exportJson}>
+                    JSON 내보내기
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
-          {viewMember?.evaluation && (
+          {step === 0 && summaries.length > 0 && (
+            <div className="card side-card">
+              <h3>이 컴퓨터의 총괄표</h3>
+              {summaries.map((s) => (
+                <div className="side-doc" key={s.id}>
+                  <div>
+                    <b>{s.subjectName}</b>
+                    <div className="muted small">위원 {s.members.length}명 · {fmtDate(s.updatedAt)}</div>
+                  </div>
+                  <div>
+                    <button className="btn sm" onClick={() => loadExisting(s)}>
+                      열기
+                    </button>{' '}
+                    <button className="btn sm danger" onClick={() => removeSaved(s)}>
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+
+        {/* 오른쪽: 서식 */}
+        <div className="work-main">
+          {step === 0 && (
             <div className="card">
-              <div className="actions" style={{ marginTop: 0 }}>
-                <h3 style={{ margin: 0 }}>{viewMember.teacherName} 위원 평가표 원본</h3>
-                <span className="spacer" />
-                <button className="btn sm" onClick={() => setViewMember(null)}>
-                  닫기
-                </button>
-              </div>
-              <div className="sheet-wrap">
-                <Form1Sheet
-                  subjectName={viewMember.evaluation.subjectName}
-                  teacherName={viewMember.evaluation.teacherName}
-                  criteria={viewMember.evaluation.criteria}
-                  publishers={viewMember.evaluation.publishers}
-                  scores={viewMember.evaluation.scores}
-                  opinion={viewMember.evaluation.summaryOpinion}
-                  readOnly
-                />
-              </div>
+              <h2>올린 평가표</h2>
+              {members.length === 0 ? (
+                <p className="muted small">왼쪽에서 위원들이 보낸 평가표 PDF를 올리세요. 파일에서 위원명·출판사·점수를 읽어 옵니다.</p>
+              ) : (
+                <div className="scroll-x">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>위원</th>
+                        <th style={{ width: 70 }}>출처</th>
+                        <th style={{ width: 70 }}>출판사</th>
+                        <th>확인할 점</th>
+                        <th style={{ width: 60 }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {members.map((m) => (
+                        <tr key={m.id}>
+                          <td>{m.teacherName}</td>
+                          <td>
+                            {m.source === 'pdf' && <span className="badge ok">PDF</span>}
+                            {m.source === 'pdf-ocr' && <span className="badge warn">스캔</span>}
+                            {m.source === 'json' && <span className="badge info">파일</span>}
+                            {m.source === 'manual' && <span className="badge gray">직접</span>}
+                          </td>
+                          <td>{m.evaluation?.publishers.length ?? '-'}</td>
+                          <td className="small muted">{m.warnings.length ? m.warnings.join(' ') : '-'}</td>
+                          <td>
+                            <button className="btn sm danger" onClick={() => removeMember(m.id)}>
+                              삭제
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="card">
-            <h2>추천 의견서 (서식3)</h2>
-            <p className="muted small">순위는 평균으로 자동 산출되며 출판사 칸에서 바꿀 수 있습니다. 의견 칸을 클릭하면 위원 의견을 종합하는 창이 열립니다.</p>
-            <div className="actions" style={{ marginTop: 0 }}>
-              <button className="btn" onClick={autoRank}>
-                순위 자동 산출
-              </button>
-            </div>
-            <div className="sheet-wrap">
-              <Form3Sheet
-                variant="official"
-                subjectName={sum.subjectName}
-                publishers={sum.publishers}
-                rows={sum.recommendDoc}
-                writer={sum.recommendWriter}
-                checker={sum.recommendChecker}
-                onTextChange={(rank, v) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-                onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
-                onOpinionClick={(rank) => setModalRank(rank)}
-              />
-            </div>
-            <div className="row">
-              <label className="field">
-                작성자 직 (대표교사)
-                <input type="text" value={sum.recommendWriter.position} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, position: e.target.value } })} />
-              </label>
-              <label className="field">
-                작성자 성명
-                <input type="text" value={sum.recommendWriter.name} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, name: e.target.value } })} />
-              </label>
-              <label className="field">
-                확인자 직 (교감)
-                <input type="text" value={sum.recommendChecker.position} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, position: e.target.value } })} />
-              </label>
-              <label className="field">
-                확인자 성명
-                <input type="text" value={sum.recommendChecker.name} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, name: e.target.value } })} />
-              </label>
-            </div>
-            <div className="actions">
-              <button className="btn" onClick={() => setStep(0)}>
-                이전
-              </button>
-              <span className="spacer" />
-              <button className="btn primary lg" onClick={() => setStep(2)}>
-                다음: 인쇄·저장
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          {sum && step === 1 && (
+            <>
+              <div className="card">
+                <h2>평가 총괄표 (서식2)</h2>
+                <p className="muted small">셀을 클릭하면 점수를 고칠 수 있고 총점·평균·순위가 다시 계산됩니다.</p>
+                <div className="actions" style={{ marginTop: 0 }}>
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="checkbox" checked={sortByAvg} onChange={(e) => setSortByAvg(e.target.checked)} /> 평균 내림차순 정렬
+                  </label>
+                  {sum.members
+                    .filter((m) => m.evaluation)
+                    .map((m) => (
+                      <button key={m.id} className="btn sm" onClick={() => setViewMember(viewMember?.id === m.id ? null : m)}>
+                        {m.teacherName} 원본
+                      </button>
+                    ))}
+                </div>
+                <div className="sheet-wrap">
+                  <Form2Sheet
+                    subjectName={sum.subjectName}
+                    publishers={sum.publishers}
+                    members={memberCols}
+                    matrix={sum.matrix}
+                    headerMode={master.settings.memberHeaderMode}
+                    decimals={master.settings.averageDecimals}
+                    writer={sum.writer}
+                    checker={sum.checker}
+                    sortByAverage={sortByAvg}
+                    onCellChange={(pid, mid, v) => update({ matrix: { ...sum.matrix, [pid]: { ...(sum.matrix[pid] || {}), [mid]: v } } })}
+                  />
+                </div>
+                <div className="row">
+                  <label className="field">
+                    작성자 직
+                    <input type="text" value={sum.writer.position} onChange={(e) => update({ writer: { ...sum.writer, position: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    작성자 성명
+                    <input type="text" value={sum.writer.name} onChange={(e) => update({ writer: { ...sum.writer, name: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    확인자 직
+                    <input type="text" value={sum.checker.position} onChange={(e) => update({ checker: { ...sum.checker, position: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    확인자 성명
+                    <input type="text" value={sum.checker.name} onChange={(e) => update({ checker: { ...sum.checker, name: e.target.value } })} />
+                  </label>
+                </div>
+              </div>
 
-      {sum && step === 2 && (
-        <div>
-          <div className="preview-toolbar card">
-            <button className="btn" onClick={() => setStep(1)}>
-              이전
-            </button>
-            <button className="btn primary lg" onClick={() => printSheets(undefined, `총괄서류_${sum.subjectName}`)}>
-              인쇄 / PDF 저장
-            </button>
-            <button className="btn" onClick={exportJson}>
-              JSON 내보내기
-            </button>
-          </div>
-          <div className="sheet-wrap">
-            <Form2Sheet subjectName={sum.subjectName} publishers={sum.publishers} members={memberCols} matrix={sum.matrix} headerMode={master.settings.memberHeaderMode} decimals={master.settings.averageDecimals} writer={sum.writer} checker={sum.checker} readOnly sortByAverage={sortByAvg} />
-            <Form3Sheet variant="official" subjectName={sum.subjectName} publishers={sum.publishers} rows={sum.recommendDoc} writer={sum.recommendWriter} checker={sum.recommendChecker} readOnly />
-          </div>
+              {viewMember?.evaluation && (
+                <div className="card">
+                  <div className="actions" style={{ marginTop: 0 }}>
+                    <h3 style={{ margin: 0 }}>{viewMember.teacherName} 위원 평가표 원본</h3>
+                    <span className="spacer" />
+                    <button className="btn sm" onClick={() => setViewMember(null)}>
+                      닫기
+                    </button>
+                  </div>
+                  <div className="sheet-wrap">
+                    <Form1Sheet
+                      subjectName={viewMember.evaluation.subjectName}
+                      teacherName={viewMember.evaluation.teacherName}
+                      criteria={viewMember.evaluation.criteria}
+                      publishers={viewMember.evaluation.publishers}
+                      scores={viewMember.evaluation.scores}
+                      opinion={viewMember.evaluation.summaryOpinion}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="card">
+                <h2>추천 의견서 (서식3)</h2>
+                <p className="muted small">순위는 평균으로 자동 산출되며 출판사 칸에서 바꿀 수 있습니다. 의견 칸을 클릭하면 위원 의견을 종합하는 창이 열립니다.</p>
+                <div className="actions" style={{ marginTop: 0 }}>
+                  <button className="btn" onClick={autoRank}>
+                    순위 자동 산출
+                  </button>
+                </div>
+                <div className="sheet-wrap">
+                  <Form3Sheet
+                    variant="official"
+                    subjectName={sum.subjectName}
+                    publishers={sum.publishers}
+                    rows={sum.recommendDoc}
+                    writer={sum.recommendWriter}
+                    checker={sum.recommendChecker}
+                    onTextChange={(rank, v) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
+                    onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
+                    onOpinionClick={(rank) => setModalRank(rank)}
+                  />
+                </div>
+                <div className="row">
+                  <label className="field">
+                    작성자 직 (대표교사)
+                    <input type="text" value={sum.recommendWriter.position} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, position: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    작성자 성명
+                    <input type="text" value={sum.recommendWriter.name} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, name: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    확인자 직 (교감)
+                    <input type="text" value={sum.recommendChecker.position} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, position: e.target.value } })} />
+                  </label>
+                  <label className="field">
+                    확인자 성명
+                    <input type="text" value={sum.recommendChecker.name} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, name: e.target.value } })} />
+                  </label>
+                </div>
+              </div>
+            </>
+          )}
+
+          {sum && step === 2 && (
+            <div className="sheet-wrap">
+              <Form2Sheet subjectName={sum.subjectName} publishers={sum.publishers} members={memberCols} matrix={sum.matrix} headerMode={master.settings.memberHeaderMode} decimals={master.settings.averageDecimals} writer={sum.writer} checker={sum.checker} readOnly sortByAverage={sortByAvg} />
+              <Form3Sheet variant="official" subjectName={sum.subjectName} publishers={sum.publishers} rows={sum.recommendDoc} writer={sum.recommendWriter} checker={sum.recommendChecker} readOnly />
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {renderModal()}
     </div>

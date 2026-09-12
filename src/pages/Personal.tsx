@@ -19,8 +19,8 @@ type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 열려 있는 의견 작성 창 */
 type OpenModal = { kind: 'summary' } | { kind: 'recommend'; rank: number } | null
 
-export function Personal() {
-  const { master, evaluations, saveEvaluation, deleteEvaluation } = useAppData()
+export function Personal({ go }: { go: (h: string) => void }) {
+  const { master, evaluations, saveEvaluation, deleteEvaluation, schoolStatus } = useAppData()
   const [step, setStep] = useState(0)
   const [ev, setEv] = useState<Evaluation | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
@@ -268,56 +268,43 @@ export function Personal() {
       </div>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
 
-      {step === 0 && (
-        <>
-          <div className="card">
-            <div className="basic-row">
-              <label className="field">
-                이름
-                <input type="text" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="홍길동" />
-              </label>
-              <label className="field">
-                과목
-                {master.subjects.length > 0 ? (
-                  <SubjectSelect subjects={master.subjects} value={subjectId} onChange={pickSubject} />
-                ) : (
-                  <input type="text" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} placeholder="예: 세계사" />
-                )}
-              </label>
-              {[0, 1, 2].map((i) => (
-                <label className="field" key={i}>
-                  {i + 1}순위
-                  <select
-                    value={ranks[i] || ''}
-                    disabled={!subject}
-                    onChange={(e) => {
-                      const next = [...ranks]
-                      next[i] = e.target.value || null
-                      setRanks(next)
-                    }}
-                  >
-                    <option value="">-</option>
-                    {namedPubs.map((p) => (
-                      <option key={p.id} value={p.id} disabled={ranks.some((r, j) => j !== i && r === p.id)}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
+      <div className="work-layout">
+        {/* 왼쪽: 입력 사이드바 (모든 단계에서 그대로 보인다) */}
+        <aside className="work-side no-print">
+          {schoolStatus !== 'ok' && (
+            <div className="card side-card school-tip">
+              <b>로그인 없이도 작성할 수 있어요.</b>
+              <p>학교 아이디로 연결하면 과목과 출판사가 자동으로 채워져 훨씬 손쉽게 작성할 수 있습니다.</p>
+              <button className="btn sm" onClick={() => go('settings')}>
+                학교 아이디 연결하기
+              </button>
             </div>
-
+          )}
+          <div className="card side-card">
+            <h3>기본정보</h3>
+            <label className="field">
+              이름
+              <input type="text" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="홍길동" />
+            </label>
+            <label className="field">
+              과목
+              {master.subjects.length > 0 ? (
+                <SubjectSelect subjects={master.subjects} value={subjectId} onChange={pickSubject} />
+              ) : (
+                <input type="text" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} placeholder="예: 세계사" />
+              )}
+            </label>
             {master.subjects.length > 0 && !listed && (
-              <label className="field" style={{ marginTop: 10, maxWidth: 320 }}>
-                목록에 없으면 과목명 직접 입력
+              <label className="field">
+                목록에 없으면 직접 입력
                 <input type="text" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} placeholder="예: 세계사" />
               </label>
             )}
 
             {subject && (
               <>
-                <h3 style={{ marginTop: 14 }}>출판사</h3>
-                <div className="pub-list wrap">
+                <h3 style={{ marginTop: 16 }}>출판사</h3>
+                <div className="pub-list">
                   {pubs.map((p, i) => (
                     <div className="pub-item" key={p.id}>
                       <input type="text" value={p.name} placeholder={`출판사 ${i + 1}`} onChange={(e) => setPubName(p.id, e.target.value)} />
@@ -327,24 +314,102 @@ export function Personal() {
                     </div>
                   ))}
                 </div>
-                <div className="actions" style={{ marginTop: 10 }}>
-                  <button className="btn" onClick={addPub}>
-                    + 출판사 추가
-                  </button>
-                  <label className="btn">
-                    평가표 파일(JSON) 불러오기
-                    <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importJson(e.target.files)} />
+                <button className="btn sm" style={{ marginTop: 8 }} onClick={addPub}>
+                  + 출판사 추가
+                </button>
+
+                <h3 style={{ marginTop: 16 }}>순위</h3>
+                {[0, 1, 2].map((i) => (
+                  <label className="field rank-row" key={i}>
+                    <span className="rank-label">{i + 1}순위</span>
+                    <select
+                      value={ranks[i] || ''}
+                      onChange={(e) => {
+                        const next = [...ranks]
+                        next[i] = e.target.value || null
+                        setRanks(next)
+                      }}
+                    >
+                      <option value="">-</option>
+                      {namedPubs.map((p) => (
+                        <option key={p.id} value={p.id} disabled={ranks.some((r, j) => j !== i && r === p.id)}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   </label>
-                  <span className="spacer" />
-                  <button className="btn primary lg" onClick={goNext} disabled={!ready}>
-                    다음: 추천 의견서
-                  </button>
-                </div>
+                ))}
               </>
             )}
+
+            <div className="side-actions">
+              {step > 0 && (
+                <button className="btn" onClick={() => setStep(step - 1)}>
+                  이전
+                </button>
+              )}
+              {step < 2 && (
+                <button className="btn primary" onClick={() => (step === 0 ? goNext() : setStep(2))} disabled={!ready}>
+                  {step === 0 ? '다음: 추천 의견서' : '다음: 인쇄·저장'}
+                </button>
+              )}
+              {step === 2 && (
+                <>
+                  <button className="btn primary" onClick={() => printSheets(undefined, `선정서류_${ev?.subjectName}_${ev?.teacherName}`)}>
+                    인쇄 / PDF 저장
+                  </button>
+                  <button className="btn" onClick={exportJson}>
+                    JSON 내보내기
+                  </button>
+                </>
+              )}
+              {step === 0 && (
+                <label className="btn sm">
+                  평가표 파일(JSON) 불러오기
+                  <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importJson(e.target.files)} />
+                </label>
+              )}
+              {ev && (
+                <button className="btn sm danger" onClick={() => remove(ev.id)}>
+                  이 문서 삭제
+                </button>
+              )}
+            </div>
           </div>
 
-          {ev && (
+          {!ev && myDocs.length > 0 && (
+            <div className="card side-card">
+              <h3>이 컴퓨터의 문서</h3>
+              {myDocs.map((e) => (
+                <div className="side-doc" key={e.id}>
+                  <div>
+                    <b>{e.subjectName || '?'}</b> <span className="muted small">{e.teacherName}</span>
+                    <div className="muted small">{fmtDate(e.updatedAt)}</div>
+                  </div>
+                  <div>
+                    <button className="btn sm" onClick={() => loadDoc(e)}>
+                      열기
+                    </button>{' '}
+                    <button className="btn sm danger" onClick={() => remove(e.id)}>
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+
+        {/* 오른쪽: 서식 */}
+        <div className="work-main">
+          {!ev && (
+            <div className="card empty-hint">
+              <h2>선정 평가표</h2>
+              <p className="muted small">왼쪽에 이름·과목·출판사(2곳 이상)를 넣고 1순위를 고르면 평가표가 바로 만들어집니다.</p>
+            </div>
+          )}
+
+          {ev && step === 0 && (
             <div className="card">
               <h2>선정 평가표 (서식1)</h2>
               <p className="muted small">점수 칸을 클릭해 고칠 수 있습니다. 맨 아래 종합의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
@@ -361,91 +426,38 @@ export function Personal() {
                   onOpinionClick={() => setModal({ kind: 'summary' })}
                 />
               </div>
-              <div className="actions">
-                <span className="spacer" />
-                <button className="btn primary lg" onClick={goNext}>
-                  다음: 추천 의견서
-                </button>
+            </div>
+          )}
+
+          {ev && step === 1 && (
+            <div className="card">
+              <h2>추천 의견서 (서식3)</h2>
+              <p className="muted small">순위별 출판사는 자동으로 채워졌습니다. 의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
+              <div className="sheet-wrap">
+                <Form3Sheet
+                  variant="personal"
+                  subjectName={ev.subjectName}
+                  teacherName={ev.teacherName}
+                  publishers={ev.publishers}
+                  rows={ev.recommend}
+                  writer={{ position: '교사', name: ev.teacherName }}
+                  checker={{ position: '', name: '' }}
+                  onTextChange={(rank, v) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
+                  onPubChange={(rank, pid) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
+                  onOpinionClick={(rank) => setModal({ kind: 'recommend', rank })}
+                />
               </div>
             </div>
           )}
 
-          {!ev && myDocs.length > 0 && (
-            <div className="card">
-              <h2>이 컴퓨터의 문서</h2>
-              <table className="data">
-                <tbody>
-                  {myDocs.map((e) => (
-                    <tr key={e.id}>
-                      <td>{e.subjectName || '?'}</td>
-                      <td>{e.teacherName}</td>
-                      <td className="small">{fmtDate(e.updatedAt)}</td>
-                      <td style={{ width: 130 }}>
-                        <button className="btn sm" onClick={() => loadDoc(e)}>
-                          열기
-                        </button>{' '}
-                        <button className="btn sm danger" onClick={() => remove(e.id)}>
-                          삭제
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {ev && step === 2 && (
+            <div className="sheet-wrap">
+              <Form1Sheet subjectName={ev.subjectName} teacherName={ev.teacherName} criteria={ev.criteria} publishers={ev.publishers} scores={ev.scores} opinion={ev.summaryOpinion} readOnly />
+              <Form3Sheet variant="personal" subjectName={ev.subjectName} teacherName={ev.teacherName} publishers={ev.publishers} rows={ev.recommend} writer={{ position: '교사', name: ev.teacherName }} checker={{ position: '', name: '' }} readOnly />
             </div>
           )}
-        </>
-      )}
-
-      {ev && step === 1 && (
-        <div className="card">
-          <h2>추천 의견서 (서식3)</h2>
-          <p className="muted small">순위별 출판사는 자동으로 채워졌습니다. 의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
-          <div className="sheet-wrap">
-            <Form3Sheet
-              variant="personal"
-              subjectName={ev.subjectName}
-              teacherName={ev.teacherName}
-              publishers={ev.publishers}
-              rows={ev.recommend}
-              writer={{ position: '교사', name: ev.teacherName }}
-              checker={{ position: '', name: '' }}
-              onTextChange={(rank, v) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-              onPubChange={(rank, pid) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
-              onOpinionClick={(rank) => setModal({ kind: 'recommend', rank })}
-            />
-          </div>
-          <div className="actions">
-            <button className="btn" onClick={() => setStep(0)}>
-              이전
-            </button>
-            <span className="spacer" />
-            <button className="btn primary lg" onClick={() => setStep(2)}>
-              다음: 인쇄·저장
-            </button>
-          </div>
         </div>
-      )}
-
-      {ev && step === 2 && (
-        <div>
-          <div className="preview-toolbar card">
-            <button className="btn" onClick={() => setStep(1)}>
-              이전
-            </button>
-            <button className="btn primary lg" onClick={() => printSheets(undefined, `선정서류_${ev.subjectName}_${ev.teacherName}`)}>
-              인쇄 / PDF 저장
-            </button>
-            <button className="btn" onClick={exportJson}>
-              JSON 내보내기
-            </button>
-          </div>
-          <div className="sheet-wrap">
-            <Form1Sheet subjectName={ev.subjectName} teacherName={ev.teacherName} criteria={ev.criteria} publishers={ev.publishers} scores={ev.scores} opinion={ev.summaryOpinion} readOnly />
-            <Form3Sheet variant="personal" subjectName={ev.subjectName} teacherName={ev.teacherName} publishers={ev.publishers} rows={ev.recommend} writer={{ position: '교사', name: ev.teacherName }} checker={{ position: '', name: '' }} readOnly />
-          </div>
-        </div>
-      )}
+      </div>
 
       {renderModal()}
     </div>

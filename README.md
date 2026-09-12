@@ -62,7 +62,7 @@
 
 1. https://console.firebase.google.com 에서 프로젝트를 만들고 **Firestore Database** 를 생성합니다(위치: asia-northeast3 권장).
 2. 프로젝트 설정 › 내 앱 › 웹 앱 추가 후 `firebaseConfig` 의 `apiKey`, `authDomain`, `projectId`, `appId` 를 [`public/config.json`](./public/config.json) 의 `firebase` 에 넣습니다.
-3. 빌드 › Authentication › Sign-in method 에서 **이메일/비밀번호** 를 사용 설정합니다.
+3. 빌드 › Authentication › Sign-in method 에서 **이메일/비밀번호**(학교 담당자용)와 **Google**(운영자용)을 사용 설정합니다.
 4. Authentication › 설정 › 승인된 도메인에 `dacisosl.github.io` 를 추가합니다.
 5. Firestore 화면에서 `databaseId` 와 같은 데이터베이스를 고른 뒤 규칙 탭에 [`firebase/firestore.rules`](./firebase/firestore.rules) 전체를 붙여 넣고 게시합니다.
 6. 사이트의 설정 › 담당자 로그인에서 **학교 등록(가입)** 을 하고, 정한 **학교 아이디**(예: `haemil-high`)를 선생님들께 알려 줍니다.
@@ -80,11 +80,20 @@
 | `ownerUid` | 담당 선생님 계정 식별자 (이 계정만 수정·삭제 가능) |
 | `subjects`, `publishers` | 선정 대상 과목, 과목별 출판사 |
 
+### 운영자(최종 관리자) 화면
+
+숨은 주소 `#/root` 로 들어가 **구글 계정**으로 로그인하면 학교 아이디 목록을 관리할 수 있습니다. 메뉴에는 나오지 않습니다.
+
+- 보이는 것: 학교 아이디, 학교 이름, 담당자 이메일, 등록일·수정일. 각 학교의 **과목·출판사 내용은 보이지 않습니다**(규칙에서 `schools` 목록 조회를 막아 두었습니다).
+- 할 수 있는 것: 학교 등록 삭제(학교 문서와 목록 항목을 함께 삭제).
+- 운영자 주소는 [`public/config.json`](./public/config.json) 의 `firebase.superAdmins` 와 [`firebase/firestore.rules`](./firebase/firestore.rules) 의 `isSuperAdmin()` 두 곳에 똑같이 적어야 합니다. Firebase 콘솔에서 **구글 로그인**도 함께 사용 설정하세요.
+
 ### 개인정보
 
 - 수집 항목은 **담당 선생님 이메일**(로그인·비밀번호 재설정용)과 학교 이름·아이디뿐입니다. 가입하지 않는 선생님의 정보는 수집하지 않습니다.
 - 위원별 점수·의견·총괄표는 서버에 저장되지 않습니다.
-- 설정 › 학교 계정에서 **비밀번호 변경**, **비밀번호 재설정 메일**, **회원 탈퇴**(계정과 학교 자료를 함께 즉시 삭제)를 할 수 있습니다.
+- 운영자는 학교 아이디·이름·담당자 이메일·날짜만 보며, 각 학교의 과목·출판사 내용은 관리 화면에 나오지 않습니다.
+- 설정 › 담당자 로그인에서 **비밀번호 변경**, **비밀번호 재설정 메일**, **회원 탈퇴**(계정과 학교 자료를 함께 즉시 삭제)를 할 수 있습니다.
 - 전문은 앱의 `#/privacy` 화면(개인정보 처리방침)에서 볼 수 있습니다.
 
 ## 얼마나 쓸 수 있나 (무료 한도)

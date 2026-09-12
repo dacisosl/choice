@@ -149,8 +149,8 @@ export interface FirebaseConfig {
   collection?: string
   /** Firestore 데이터베이스 ID. 비우면 (default) */
   databaseId?: string
-  /** 설정을 고칠 수 있는 관리자 구글 계정. Firestore 규칙의 목록과 같아야 한다 */
-  adminEmails?: string[]
+  /** 서비스 운영자(최종 관리자) 구글 계정. Firestore 규칙의 목록과 같아야 한다 */
+  superAdmins?: string[]
 }
 
 export interface AppConfig {

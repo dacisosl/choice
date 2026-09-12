@@ -275,8 +275,7 @@ export function parseForm3(rows: TextRow[]): ParsedRecommend[] {
   const head = rows[headIdx]
   const rankCell = head.cells.find((c) => c.text.includes('순위'))
   const pubCell = head.cells.find((c) => flatten(c.text).includes('출판사명'))
-  const opinionCell = head.cells.find((c) => flatten(c.text).includes('추천의견'))
-  if (!rankCell || !pubCell || !opinionCell) return []
+  if (!rankCell || !pubCell) return []
   const colTol = Math.max(10, (pubCell.center - rankCell.center) / 2 - 2)
 
   let endIdx = rows.length
@@ -311,7 +310,8 @@ export function parseForm3(rows: TextRow[]): ParsedRecommend[] {
       if (Math.abs(c.center - rankCell.center) <= colTol) continue // 순위 숫자
       if (Math.abs(c.center - pubCell.center) <= colTol) {
         entry.publisherName = normalize(`${entry.publisherName} ${c.text}`)
-      } else if (c.center > opinionCell.x - colTol) {
+      } else if (c.x > pubCell.center + colTol) {
+        // 출판사 칸보다 오른쪽에 있으면 추천의견 글줄로 본다
         entry.text = normalize(`${entry.text} ${c.text}`)
       }
     }

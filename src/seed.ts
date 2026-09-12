@@ -127,7 +127,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export function seedMaster(overrides?: Partial<Settings>): Master {
   return {
-    version: 2,
+    version: 3,
     settings: { ...DEFAULT_SETTINGS, ...overrides },
     subjects: [],
     publishers: [],
