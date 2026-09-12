@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppConfig, Member } from '../types'
 import { ensureFirebaseApp, getDb, hasFirebaseConfig, MEMBERS_COLLECTION } from './firebase'
-import { loadConfig } from './storage'
+import { getMyDocIds, loadConfig } from './storage'
 
 export interface AuthUser {
   uid: string
@@ -92,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const fsRef = useRef<{ fs: Fs; db: import('firebase/firestore').Firestore } | null>(null)
+  const applyUserRef = useRef<((u: import('firebase/auth').User | null) => Promise<void>) | null>(null)
 
   const getFs = useCallback(async () => {
     if (fsRef.current) return fsRef.current
@@ -133,7 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const db = getDb(fs, app, cfg.firebase)
         fsRef.current = { fs, db }
         const a = auth.getAuth(app)
-        unsub = auth.onAuthStateChanged(a, async (u) => {
+
+        // 로그인·익명 전환·계정 연결 모두에서 같은 갱신 경로를 쓴다
+        const applyUser = async (u: import('firebase/auth').User | null) => {
           if (cancelled) return
           if (!u) {
             // 일반 교사는 로그인 없이 제출할 수 있도록 익명 세션을 자동으로 만든다
@@ -171,7 +174,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setError(`구성원 정보를 읽지 못했습니다: ${(e as Error).message}`)
           }
           setReady(true)
-        })
+        }
+        applyUserRef.current = applyUser
+        // 계정 연결(link)은 onAuthStateChanged를 발생시키지 않으므로 토큰 변경을 듣는다
+        unsub = auth.onIdTokenChanged(a, applyUser)
       } catch (e) {
         setError(`로그인 초기화 실패: ${(e as Error).message}`)
         setReady(true)
@@ -196,18 +202,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider.setCustomParameters({ prompt: 'select_account' })
       const current = a.currentUser
       try {
-        // 익명으로 작성 중이던 문서를 잃지 않도록 계정을 연결한다
-        if (current?.isAnonymous) {
+        // 익명으로 작성 중이던 문서가 있으면 계정을 연결해 uid를 유지한다
+        if (current?.isAnonymous && getMyDocIds().length > 0) {
           try {
             await auth.linkWithPopup(current, provider)
           } catch (e) {
             const code = (e as { code?: string }).code || ''
-            if (code.includes('already-in-use') || code.includes('provider-already-linked')) await auth.signInWithPopup(a, provider)
-            else throw e
+            if (code.includes('already-in-use')) {
+              // 이미 가입된 구글 계정이면 팝업을 다시 띄우지 말고 그 자격증명으로 전환한다
+              const cred = auth.GoogleAuthProvider.credentialFromError(e as never)
+              if (!cred) throw e
+              await auth.signInWithCredential(a, cred)
+            } else if (code.includes('provider-already-linked')) {
+              /* 이미 연결됨 — 아래에서 상태만 갱신 */
+            } else throw e
           }
         } else {
           await auth.signInWithPopup(a, provider)
         }
+        // 계정 연결은 인증 상태 이벤트를 발생시키지 않으므로 직접 갱신한다
+        await a.currentUser?.getIdToken(true)
+        await applyUserRef.current?.(a.currentUser)
       } catch (e) {
         const code = (e as { code?: string }).code || ''
         if (code.includes('popup-blocked') || code.includes('operation-not-supported')) {
