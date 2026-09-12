@@ -186,7 +186,7 @@ input[type='checkbox'] { accent-color: var(--primary); }
 }
 .hero-left .lead { word-break: keep-all; color: var(--text-2); font-size: clamp(12.5px, 1.15vw, 15px); line-height: 1.5; margin: 0; max-width: 21em; }
 
-.hero-right { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 0 18px; }
+.hero-right { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 0 18px; transform: translateX(clamp(0px, 4vw, 56px)); }
 /* 세로로 긴 시작 카드: 안내 문구·제목·화살표가 한 필드 안에 들어간다 */
 .cta-tall {
   display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -401,7 +401,7 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .topbar nav .optional { display: none; }
   .hero-split { grid-template-columns: 1fr; height: auto; min-height: 0; padding-bottom: 18px; margin-bottom: 0; }
   .hero-left { justify-content: flex-start; padding-top: 10px; }
-  .hero-right { justify-content: flex-start; padding: 22px 0 0; }
+  .hero-right { justify-content: flex-start; padding: 22px 0 0; transform: none; }
   .hero-photo { position: relative; left: auto; right: auto; bottom: auto; order: 3; margin: 18px -20px 0; }
   .steps3 { grid-template-columns: 1fr; gap: 14px; }
   .steps3 .s { border-left: none; padding-left: 8px; }
