@@ -28,15 +28,14 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
   const pubName = (id: string | null) => publishers.find((p) => p.id === id)?.name || ''
   return (
     <div className={`form-sheet ${readOnly ? 'readonly' : ''}`}>
-      <div className="form-tag">【서식3】{variant === 'personal' ? ' (위원 개인 의견)' : ''}</div>
       <div className="form-title">추천 검정(인정)도서 및 추천 의견서</div>
       <div className="form-head">
         <div>
-          과&nbsp;&nbsp;목 : <span className="name">{subjectName || '________'}</span>
+          과&nbsp;&nbsp;목 : <span className="name">{subjectName}</span>
         </div>
         {variant === 'personal' && (
           <div className="right">
-            위&nbsp;&nbsp;원 : <span className="name">{teacherName || '________'}</span> (인)
+            위&nbsp;&nbsp;원 : <span className="name">{teacherName}</span> (인)
           </div>
         )}
       </div>
@@ -94,14 +93,14 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
             교과협의회
           </span>
           <span className="k">작성자</span>
-          <span>직 {writer.position || '______'}</span>
-          <span>성명 {writer.name || '______'} (인)</span>
+          <span>직 <span className="fill">{writer.position}</span></span>
+          <span>성명 <span className="fill">{writer.name}</span> (인)</span>
         </div>
         <div className="line">
           <span className="k" style={{ width: 80 }} />
           <span className="k">확인자</span>
-          <span>직 {checker.position || '______'}</span>
-          <span>성명 {checker.name || '______'} (인)</span>
+          <span>직 <span className="fill">{checker.position}</span></span>
+          <span>성명 <span className="fill">{checker.name}</span> (인)</span>
         </div>
       </div>
       <div className="footnote">

@@ -24,6 +24,7 @@ function Shell() {
           <BookIcon />
           <span>선정초안작성기</span>
         </div>
+        <div id="topbar-slot" className="topbar-slot" />
         <div className="meta">
           {schoolStatus === 'ok' && school && (
             <button className="badge ok as-link" onClick={() => go('settings')} title={`학교 아이디 ${schoolId} 의 과목·출판사를 쓰고 있습니다`}>

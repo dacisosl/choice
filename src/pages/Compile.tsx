@@ -11,6 +11,9 @@ import { Form1Sheet } from '../components/Form1Sheet'
 import { Form2Sheet } from '../components/Form2Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
+import { HeaderSlot } from '../components/HeaderSlot'
+import { SchoolConnect } from '../components/SchoolConnect'
+import { SheetFit } from '../components/SheetFit'
 
 const STEPS = ['점수표 올리기', '총괄표 확인', '인쇄·저장']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
@@ -250,15 +253,21 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
   return (
     <div>
-      <div className="steps">
-        {STEPS.map((s, i) => (
-          <span key={s} className={`step ${i === step ? 'active' : i < step ? 'done' : ''}`} onClick={() => sum && setStep(i)} style={{ cursor: sum ? 'pointer' : 'default' }}>
-            {i + 1}. {s}
-          </span>
-        ))}
-        <span className="spacer" />
-        {sum && <span className="badge gray">저장됨 {fmtDate(sum.updatedAt)}</span>}
-      </div>
+      <HeaderSlot>
+        <div className="steps">
+          {STEPS.map((s, i) => (
+            <span
+              key={s}
+              className={`step ${i === step ? 'active' : i < step ? 'done' : ''}`}
+              onClick={() => sum && setStep(i)}
+              style={{ cursor: sum ? 'pointer' : 'default' }}
+              title={sum ? `저장됨 ${fmtDate(sum.updatedAt)}` : undefined}
+            >
+              {i + 1}. {s}
+            </span>
+          ))}
+        </div>
+      </HeaderSlot>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
       {progress && (
         <div className="alert info">
@@ -270,15 +279,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
       <div className="work-layout">
         {/* 왼쪽: 입력 사이드바 */}
         <aside className="work-side no-print">
-          {schoolStatus !== 'ok' && (
-            <div className="card side-card school-tip">
-              <b>로그인 없이도 작성할 수 있어요.</b>
-              <p>학교 아이디로 연결하면 과목과 출판사가 자동으로 채워져 훨씬 손쉽게 작성할 수 있습니다.</p>
-              <button className="btn sm" onClick={() => go('settings')}>
-                학교 아이디 연결하기
-              </button>
-            </div>
-          )}
+          <SchoolConnect />
           <div className="card side-card">
             <h3>기본정보</h3>
             <label className="field">
@@ -341,45 +342,20 @@ export function Compile({ go }: { go: (h: string) => void }) {
               </div>
             )}
 
-            <div className="side-actions">
-              {step === 0 && (
-                <>
-                  <button className="btn primary" onClick={generate} disabled={!members.length}>
-                    총괄표 생성하기
-                  </button>
-                  <button className="btn sm" onClick={addManual}>
-                    위원 직접 추가
-                  </button>
-                  <label className="btn sm">
-                    총괄표 파일(JSON) 불러오기
-                    <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importSummaryJson(e.target.files)} />
-                  </label>
-                </>
-              )}
-              {step === 1 && (
-                <>
-                  <button className="btn" onClick={() => setStep(0)}>
-                    이전
-                  </button>
-                  <button className="btn primary" onClick={() => setStep(2)}>
-                    다음: 인쇄·저장
-                  </button>
-                </>
-              )}
-              {step === 2 && sum && (
-                <>
-                  <button className="btn" onClick={() => setStep(1)}>
-                    이전
-                  </button>
-                  <button className="btn primary" onClick={() => printSheets(undefined, `총괄서류_${sum.subjectName}`)}>
-                    인쇄 / PDF 저장
-                  </button>
-                  <button className="btn" onClick={exportJson}>
-                    JSON 내보내기
-                  </button>
-                </>
-              )}
-            </div>
+            {step === 0 && (
+              <div className="side-actions">
+                <button className="btn primary" onClick={generate} disabled={!members.length}>
+                  총괄표 생성하기
+                </button>
+                <button className="btn sm" onClick={addManual}>
+                  위원 직접 추가
+                </button>
+                <label className="btn sm">
+                  총괄표 파일(JSON) 불러오기
+                  <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importSummaryJson(e.target.files)} />
+                </label>
+              </div>
+            )}
           </div>
 
           {step === 0 && summaries.length > 0 && (
@@ -453,7 +429,17 @@ export function Compile({ go }: { go: (h: string) => void }) {
           {sum && step === 1 && (
             <>
               <div className="card">
-                <h2>평가 총괄표 (서식2)</h2>
+                <div className="main-head">
+                  <h2>평가 총괄표</h2>
+                  <div className="main-head-actions">
+                    <button className="btn" onClick={() => setStep(0)}>
+                      이전
+                    </button>
+                    <button className="btn primary" onClick={() => setStep(2)}>
+                      다음: 인쇄·저장
+                    </button>
+                  </div>
+                </div>
                 <p className="muted small">셀을 클릭하면 점수를 고칠 수 있고 총점·평균·순위가 다시 계산됩니다.</p>
                 <div className="actions" style={{ marginTop: 0 }}>
                   <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -467,7 +453,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                       </button>
                     ))}
                 </div>
-                <div className="sheet-wrap">
+                <SheetFit bottomGap={120}>
                   <Form2Sheet
                     subjectName={sum.subjectName}
                     publishers={sum.publishers}
@@ -480,7 +466,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                     sortByAverage={sortByAvg}
                     onCellChange={(pid, mid, v) => update({ matrix: { ...sum.matrix, [pid]: { ...(sum.matrix[pid] || {}), [mid]: v } } })}
                   />
-                </div>
+                </SheetFit>
                 <div className="row">
                   <label className="field">
                     작성자 직
@@ -510,7 +496,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                       닫기
                     </button>
                   </div>
-                  <div className="sheet-wrap">
+                  <SheetFit bottomGap={120}>
                     <Form1Sheet
                       subjectName={viewMember.evaluation.subjectName}
                       teacherName={viewMember.evaluation.teacherName}
@@ -520,19 +506,19 @@ export function Compile({ go }: { go: (h: string) => void }) {
                       opinion={viewMember.evaluation.summaryOpinion}
                       readOnly
                     />
-                  </div>
+                  </SheetFit>
                 </div>
               )}
 
               <div className="card">
-                <h2>추천 의견서 (서식3)</h2>
+                <h2>추천 의견서</h2>
                 <p className="muted small">순위는 평균으로 자동 산출되며 출판사 칸에서 바꿀 수 있습니다. 의견 칸을 클릭하면 위원 의견을 종합하는 창이 열립니다.</p>
                 <div className="actions" style={{ marginTop: 0 }}>
                   <button className="btn" onClick={autoRank}>
                     순위 자동 산출
                   </button>
                 </div>
-                <div className="sheet-wrap">
+                <SheetFit bottomGap={120}>
                   <Form3Sheet
                     variant="official"
                     subjectName={sum.subjectName}
@@ -544,7 +530,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                     onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
                     onOpinionClick={(rank) => setModalRank(rank)}
                   />
-                </div>
+                </SheetFit>
                 <div className="row">
                   <label className="field">
                     작성자 직 (대표교사)
@@ -568,9 +554,25 @@ export function Compile({ go }: { go: (h: string) => void }) {
           )}
 
           {sum && step === 2 && (
-            <div className="sheet-wrap">
+            <div className="card">
+              <div className="main-head">
+                <h2>인쇄·저장</h2>
+                <div className="main-head-actions">
+                  <button className="btn" onClick={() => setStep(1)}>
+                    이전
+                  </button>
+                  <button className="btn primary" onClick={() => printSheets(undefined, `총괄서류_${sum.subjectName}`)}>
+                    인쇄 / PDF 저장
+                  </button>
+                  <button className="btn" onClick={exportJson}>
+                    JSON 내보내기
+                  </button>
+                </div>
+              </div>
+              <div className="sheet-wrap">
               <Form2Sheet subjectName={sum.subjectName} publishers={sum.publishers} members={memberCols} matrix={sum.matrix} headerMode={master.settings.memberHeaderMode} decimals={master.settings.averageDecimals} writer={sum.writer} checker={sum.checker} readOnly sortByAverage={sortByAvg} />
-              <Form3Sheet variant="official" subjectName={sum.subjectName} publishers={sum.publishers} rows={sum.recommendDoc} writer={sum.recommendWriter} checker={sum.recommendChecker} readOnly />
+                <Form3Sheet variant="official" subjectName={sum.subjectName} publishers={sum.publishers} rows={sum.recommendDoc} writer={sum.recommendWriter} checker={sum.recommendChecker} readOnly />
+              </div>
             </div>
           )}
         </div>

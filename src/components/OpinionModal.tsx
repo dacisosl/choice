@@ -152,37 +152,37 @@ export function OpinionModal({
           <h4 className="modal-sub">핵심의견 선택</h4>
           <OpinionPicker options={options} scope={scope} subjectGroup={subjectGroup} selected={keys} onChange={setKeys} />
 
-          <div className="actions modal-gen">
-            <select value={length} onChange={(e) => setLength(e.target.value as 'short' | 'long')}>
-              <option value="short">2~4문장</option>
-              <option value="long">4~6문장</option>
-            </select>
-            {kind === 'recommend' && (
-              <select value={strength} onChange={(e) => setStrength(e.target.value as RecommendStrength)}>
-                {STRENGTHS.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            )}
-            <button className="btn primary" onClick={generate} disabled={busy || !!notice}>
-              {busy ? '생성 중…' : text ? '다시 생성' : '의견 생성'}
-            </button>
-            <span className="muted small">
-              {hasKey ? `AI 모델 ${settings.aiModel} · ${aiCount + used}/${settings.aiMaxPerDoc}회${overLimit ? ' (상한 도달 — 규칙 기반으로 생성)' : ''}` : 'AI 키 미설정 — 규칙 기반 문장'}
-            </span>
-          </div>
-
-          {msg && <p className="muted small" style={{ marginTop: 6 }}>{msg}</p>}
-
           <h4 className="modal-sub">의견 문장 (직접 고칠 수 있습니다)</h4>
-          <textarea
-            ref={areaRef}
-            className="modal-text"
-            value={text}
-            rows={7}
-            placeholder="핵심의견을 고르고 [의견 생성]을 누르거나 여기에 직접 입력하세요."
-            onChange={(e) => setText(e.target.value)}
-          />
+          <div className="modal-write">
+            <textarea
+              ref={areaRef}
+              className="modal-text"
+              value={text}
+              rows={5}
+              placeholder="핵심의견을 고르고 [의견 생성]을 누르거나 여기에 직접 입력하세요."
+              onChange={(e) => setText(e.target.value)}
+            />
+            <div className="modal-gen">
+              <span className="muted small">
+                {hasKey ? `AI ${settings.aiModel} · ${aiCount + used}/${settings.aiMaxPerDoc}회${overLimit ? ' (상한 도달)' : ''}` : 'AI 키 미설정 — 규칙 기반 문장'}
+              </span>
+              <select value={length} onChange={(e) => setLength(e.target.value as 'short' | 'long')}>
+                <option value="short">2~4문장</option>
+                <option value="long">4~6문장</option>
+              </select>
+              {kind === 'recommend' && (
+                <select value={strength} onChange={(e) => setStrength(e.target.value as RecommendStrength)}>
+                  {STRENGTHS.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+              <button className="btn primary" onClick={generate} disabled={busy || !!notice}>
+                {busy ? '생성 중…' : text ? '다시 생성' : '의견 생성'}
+              </button>
+            </div>
+          </div>
+          {msg && <p className="muted small" style={{ marginTop: 6 }}>{msg}</p>}
         </div>
 
         <div className="modal-foot">

@@ -26,11 +26,10 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
 
   return (
     <div className={`form-sheet ${readOnly ? 'readonly' : ''}`}>
-      <div className="form-tag">【서식2】</div>
       <div className="form-title">검정(인정)도서 선정기준 평가 총괄표</div>
       <div className="form-head">
         <div>
-          과&nbsp;&nbsp;목 : <span className="name">{subjectName || '________'}</span>
+          과&nbsp;&nbsp;목 : <span className="name">{subjectName}</span>
         </div>
         <div />
       </div>
@@ -92,13 +91,13 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
       <div className="sign-block">
         <div className="line">
           <span className="k">작성자</span>
-          <span>직 {writer.position || '______'}</span>
-          <span>성명 {writer.name || '______'} (인)</span>
+          <span>직 <span className="fill">{writer.position}</span></span>
+          <span>성명 <span className="fill">{writer.name}</span> (인)</span>
         </div>
         <div className="line">
           <span className="k">확인자</span>
-          <span>직 {checker.position || '______'}</span>
-          <span>성명 {checker.name || '______'} (인)</span>
+          <span>직 <span className="fill">{checker.position}</span></span>
+          <span>성명 <span className="fill">{checker.name}</span> (인)</span>
         </div>
       </div>
       <div className="footnote">※ 작성자는 교과협의회 소속교사, 확인자는 교과협의회 대표교사로 함</div>

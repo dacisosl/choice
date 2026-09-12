@@ -34,17 +34,16 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
 
   return (
     <div className={`form-sheet landscape ${readOnly ? 'readonly' : ''}`}>
-      <div className="form-tag">【서식1】</div>
       <div className="form-title">검정(인정)도서 선정 평가표</div>
       <div className="form-head">
         <div />
         <div className="right">
           <span className="sign">
-            과&nbsp;&nbsp;목 : <span className="name">{subjectName || '________'}</span> 과
+            과&nbsp;&nbsp;목 : <span className="name">{subjectName}</span> 과
           </span>
           &nbsp;&nbsp;&nbsp;&nbsp;
           <span className="sign">
-            위&nbsp;&nbsp;원 : <span className="name">{teacherName || '________'}</span> (인)
+            위&nbsp;&nbsp;원 : <span className="name">{teacherName}</span> (인)
           </span>
         </div>
       </div>

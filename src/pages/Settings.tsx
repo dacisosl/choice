@@ -1,13 +1,12 @@
-import { useMemo, useState } from 'react'
-import type { Criterion, Master, OpinionOption, Publisher, Settings as SettingsType, Subject } from '../types'
+import { useState } from 'react'
+import type { Criterion, Master, Publisher, Subject } from '../types'
 import { DEFAULT_CRITERIA, seedSubjects, uid } from '../seed'
 import { useAppData } from '../store/useAppData'
 import { publishersFor } from '../lib/scoring'
-import { getApiKey, setApiKey } from '../lib/ai'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
 import { schoolIdError } from '../store/school'
 
-const TABS = ['담당자 로그인', '선정 과목 관리', '과목별 출판사 관리', '평가기준', '의견 선택지', '문서·AI 설정']
+const TABS = ['담당자 로그인', '선정 과목 관리', '과목별 출판사 관리', '평가기준']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 
 export function Settings({ go }: { go: (h: string) => void }) {
@@ -25,8 +24,6 @@ export function Settings({ go }: { go: (h: string) => void }) {
       {tab === 1 && <SubjectsTab />}
       {tab === 2 && <PublishersTab />}
       {tab === 3 && <CriteriaTab />}
-      {tab === 4 && <OptionsTab />}
-      {tab === 5 && <DocSettingsTab />}
     </div>
   )
 }
@@ -564,80 +561,6 @@ function CriteriaTab() {
   )
 }
 
-// ───────────── 의견 선택지 ─────────────
-function OptionsTab() {
-  const { master, save, msg } = useMasterEdit()
-  const [scope, setScope] = useState<'summary' | 'recommend'>('summary')
-  const list = master.opinionOptions.filter((o) => o.scope === scope).sort((a, b) => a.order - b.order)
-  const groups = Array.from(new Set(master.subjects.map((s) => s.subjectGroup)))
-  const setOpt = (o: OpinionOption) => save({ ...master, opinionOptions: master.opinionOptions.map((x) => (x.id === o.id ? o : x)) })
-  const add = () => save({ ...master, opinionOptions: [...master.opinionOptions, { id: uid(), scope, category: '기타', label: '', subjectGroup: null, order: (Math.max(0, ...master.opinionOptions.map((o) => o.order)) || 0) + 1 }] })
-  const copyToOther = () => {
-    const other = scope === 'summary' ? 'recommend' : 'summary'
-    if (!confirm(`현재 목록을 ${other === 'summary' ? '종합의견' : '추천의견'} 선택지로 복사(덮어쓰기)할까요?`)) return
-    const copied = list.map((o) => ({ ...o, id: uid(), scope: other as 'summary' | 'recommend' }))
-    save({ ...master, opinionOptions: [...master.opinionOptions.filter((o) => o.scope !== other), ...copied] })
-  }
-  return (
-    <div>
-      {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
-      <div className="card">
-        <div className="actions" style={{ marginTop: 0 }}>
-          <select value={scope} onChange={(e) => setScope(e.target.value as 'summary' | 'recommend')}>
-            <option value="summary">종합의견 (서식1 하단)</option>
-            <option value="recommend">추천의견 (서식3)</option>
-          </select>
-          <button className="btn" onClick={add}>
-            항목 추가
-          </button>
-          <button className="btn" onClick={copyToOther}>
-            다른 용도로 복사
-          </button>
-        </div>
-        <table className="data" style={{ marginTop: 10 }}>
-          <thead>
-            <tr>
-              <th style={{ width: 140 }}>카테고리</th>
-              <th>항목</th>
-              <th style={{ width: 130 }}>교과군 (공통=빈칸)</th>
-              <th style={{ width: 80 }}>아쉬운 점</th>
-              <th style={{ width: 70 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {list.map((o) => (
-              <tr key={o.id}>
-                <td>
-                  <input type="text" value={o.category} onChange={(e) => setOpt({ ...o, category: e.target.value })} />
-                </td>
-                <td>
-                  <input type="text" value={o.label} onChange={(e) => setOpt({ ...o, label: e.target.value })} />
-                </td>
-                <td>
-                  <select value={o.subjectGroup || ''} onChange={(e) => setOpt({ ...o, subjectGroup: e.target.value || null })}>
-                    <option value="">공통</option>
-                    {groups.map((g) => (
-                      <option key={g}>{g}</option>
-                    ))}
-                  </select>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <input type="checkbox" checked={!!o.negative} onChange={(e) => setOpt({ ...o, negative: e.target.checked })} />
-                </td>
-                <td>
-                  <button className="btn sm danger" onClick={() => save({ ...master, opinionOptions: master.opinionOptions.filter((x) => x.id !== o.id) })}>
-                    삭제
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 // ───────────── 학교 계정 ─────────────
 function AccountTab({ go }: { go: (h: string) => void }) {
   const {
@@ -895,145 +818,6 @@ function AccountTab({ go }: { go: (h: string) => void }) {
             {authError}
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-// ───────────── 문서·AI 설정 ─────────────
-function DocSettingsTab() {
-  const { master, save, msg, setMsg } = useMasterEdit()
-  const { evaluations, summaries, resetMaster } = useAppData()
-  const [s, setS] = useState<SettingsType>(master.settings)
-  const [apiKey, setKey] = useState(getApiKey())
-
-  const counts = useMemo(() => ({ ev: evaluations.length, sum: summaries.length }), [evaluations, summaries])
-
-  const exportSettings = () => downloadText(`선정작성기_설정_${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(master, null, 2), 'application/json')
-  const importSettings = async (file: File | null) => {
-    if (!file) return
-    try {
-      const data = JSON.parse(await readFileText(file)) as Master
-      if (!data.criteria || !data.subjects) throw new Error('설정 파일이 아닙니다.')
-      if (!confirm('설정 파일을 불러오면 과목·출판사·평가기준·선택지가 덮어써집니다. 계속할까요?')) return
-      await save(data, '설정을 불러왔습니다.')
-      setS(data.settings)
-    } catch (e) {
-      setMsg({ type: 'error', text: `불러오기 실패: ${(e as Error).message}` })
-    }
-  }
-
-  return (
-    <div className="grid2">
-      <div className="card">
-        {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
-        <h2>문서 설정</h2>
-        <div className="row">
-          <label className="field">
-            학교명 (서식에 표시)
-            <input type="text" value={s.schoolName} onChange={(e) => setS({ ...s, schoolName: e.target.value })} />
-          </label>
-          <label className="field">
-            학년도
-            <input type="number" value={s.year} onChange={(e) => setS({ ...s, year: Number(e.target.value) })} />
-          </label>
-        </div>
-        <div className="row">
-          <label className="field">
-            문체
-            <select value={s.tone} onChange={(e) => setS({ ...s, tone: e.target.value as SettingsType['tone'] })}>
-              <option value="formal">개조식 (~함/~됨)</option>
-              <option value="plain">서술식 (~합니다)</option>
-            </select>
-          </label>
-          <label className="field">
-            서식2 위원 열 표기
-            <select value={s.memberHeaderMode} onChange={(e) => setS({ ...s, memberHeaderMode: e.target.value as SettingsType['memberHeaderMode'] })}>
-              <option value="name">실명</option>
-              <option value="number">위원1, 위원2…</option>
-            </select>
-          </label>
-          <label className="field">
-            평균 소수 자릿수
-            <input type="number" min={0} max={2} value={s.averageDecimals} onChange={(e) => setS({ ...s, averageDecimals: Number(e.target.value) })} />
-          </label>
-        </div>
-        <h3 style={{ marginTop: 12 }}>순위별 초안 총점 기준</h3>
-        <div className="row">
-          {(['r1', 'r2', 'r3', 'other'] as const).map((k) => (
-            <label className="field" key={k}>
-              {k === 'r1' ? '1순위' : k === 'r2' ? '2순위' : k === 'r3' ? '3순위' : '순위 밖'}
-              <input type="number" value={s.targetScores[k]} onChange={(e) => setS({ ...s, targetScores: { ...s.targetScores, [k]: Number(e.target.value) } })} />
-            </label>
-          ))}
-        </div>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
-          <input type="checkbox" checked={s.jitter} onChange={(e) => setS({ ...s, jitter: e.target.checked })} /> 점수 자연스럽게 흩뿌리기
-        </label>
-        <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-          <input type="checkbox" checked={s.printPersonalRecommend} onChange={(e) => setS({ ...s, printPersonalRecommend: e.target.checked })} /> 개인 추천의견(서식3형)도 인쇄에 포함
-        </label>
-        <div className="actions">
-          <button className="btn primary" onClick={() => save({ ...master, settings: s })}>
-            설정 저장
-          </button>
-        </div>
-      </div>
-
-      <div className="card">
-        <h2>AI 문장 생성 (OpenRouter)</h2>
-        <p className="muted small">API 키는 이 컴퓨터에만 저장됩니다. 키가 없으면 규칙 기반 문장으로 자동 대체됩니다.</p>
-        <label className="field">
-          OpenRouter API 키
-          <input type="password" value={apiKey} onChange={(e) => setKey(e.target.value)} placeholder="sk-or-v1-…" />
-        </label>
-        <div className="row" style={{ marginTop: 8 }}>
-          <label className="field">
-            기본 모델
-            <input type="text" value={s.aiModel} onChange={(e) => setS({ ...s, aiModel: e.target.value })} />
-          </label>
-          <label className="field">
-            폴백 모델
-            <input type="text" value={s.aiFallbackModel} onChange={(e) => setS({ ...s, aiFallbackModel: e.target.value })} />
-          </label>
-          <label className="field">
-            문서당 생성 상한
-            <input type="number" value={s.aiMaxPerDoc} onChange={(e) => setS({ ...s, aiMaxPerDoc: Number(e.target.value) })} />
-          </label>
-        </div>
-        <div className="actions">
-          <button
-            className="btn primary"
-            onClick={() => {
-              setApiKey(apiKey.trim())
-              save({ ...master, settings: s }, 'AI 설정을 저장했습니다.')
-            }}
-          >
-            AI 설정 저장
-          </button>
-        </div>
-
-        <h2 style={{ marginTop: 20 }}>설정 내보내기·가져오기</h2>
-        <p className="muted small">
-          과목·출판사·평가기준·선택지·설정을 파일로 주고받습니다. 이 컴퓨터에 평가표 {counts.ev}건, 총괄표 {counts.sum}건이 저장되어 있습니다.
-        </p>
-        <div className="actions" style={{ marginTop: 0 }}>
-          <button className="btn" onClick={exportSettings}>
-            설정 내보내기(JSON)
-          </button>
-          <label className="btn">
-            설정 가져오기
-            <input type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => importSettings(e.target.files?.[0] || null)} />
-          </label>
-          <button
-            className="btn danger"
-            onClick={() => {
-              if (confirm('과목·출판사·평가기준·선택지·설정을 초기값으로 되돌릴까요? (작성한 평가표·총괄표는 유지)')) resetMaster()
-            }}
-          >
-            설정 초기화
-          </button>
-        </div>
       </div>
     </div>
   )

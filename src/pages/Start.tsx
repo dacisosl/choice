@@ -104,9 +104,8 @@ export function Start({ go }: { go: (h: string) => void }) {
             →
           </span>
         </button>
-        <div className="compile-ask">총괄 작성 교사이신가요?</div>
         <button className="chip-pill" onClick={() => go('compile')}>
-          평가총괄표 작성 <span aria-hidden="true">→</span>
+          <span className="chip-sub">총괄 작성 교사라면</span> 평가총괄표 작성 <span aria-hidden="true">→</span>
         </button>
       </div>
     </section>
