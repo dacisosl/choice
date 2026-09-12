@@ -6,6 +6,7 @@ import { useAuth } from '../store/auth'
 import { buildDraftScores, criteriaFor, publishersFor } from '../lib/scoring'
 import { aiGenerate, getApiKey, splitKeys } from '../lib/ai'
 import { downloadText } from '../lib/csv'
+import { printSheets } from '../lib/print'
 import { SubjectSelect } from '../components/SubjectSelect'
 import { OpinionPicker } from '../components/OpinionPicker'
 import { Form1Sheet } from '../components/Form1Sheet'
@@ -417,8 +418,16 @@ export function Personal() {
       {ev && subject && step === 3 && (
         <div>
           <div className="preview-toolbar card">
-            <button className="btn" onClick={() => window.print()}>
-              인쇄 / PDF 저장
+            <button className="btn primary" onClick={() => printSheets('.form-sheet.landscape')}>
+              서식1 인쇄 (가로)
+            </button>
+            {master.settings.printPersonalRecommend && (
+              <button className="btn" onClick={() => printSheets('.form-sheet:not(.landscape)')}>
+                추천의견 인쇄 (세로)
+              </button>
+            )}
+            <button className="btn ghost" onClick={() => printSheets()} title="가로·세로가 섞여 브라우저에 따라 빈 페이지가 낄 수 있습니다">
+              한 번에 인쇄
             </button>
             <button className="btn" onClick={exportJson}>
               파일로 내보내기(JSON)

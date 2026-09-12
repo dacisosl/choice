@@ -372,18 +372,23 @@ td.num { text-align: center; }
 @media print {
   @page { size: A4 portrait; margin: 12mm; }
   @page landscape { size: A4 landscape; margin: 12mm; }
-  html, body { background: #fff; }
-  .no-print, .topbar, .steps, .steps-bar, .tabs, .actions, .preview-toolbar, .alert, .hero, .card:not(.print-keep) { display: none !important; }
-  .app { max-width: none; padding: 0; }
-  .sheet-wrap { overflow: visible; padding: 0; }
-  .form-sheet {
-    border: none; box-shadow: none; margin: 0; padding: 0; border-radius: 0;
+  html, body { background: #fff !important; margin: 0; padding: 0; height: auto; }
+  .no-print, .topbar, .steps, .steps-bar, .tabs, .actions, .preview-toolbar, .alert, .hero-split, .steps3, .stats-line, .start-note,
+  .card:not(.print-keep) { display: none !important; }
+  .app { max-width: none; padding: 0; margin: 0; }
+  .sheet-wrap { overflow: visible; padding: 0; margin: 0; }
+  /* 화면용 크기(210mm/297mm, min-height)를 모두 해제해 인쇄 영역에 맞춘다. 두 클래스 선택자로 우선순위를 맞춘다. */
+  .form-sheet, .form-sheet.landscape {
     width: auto; min-height: 0; max-width: none;
-    break-after: page; page-break-after: always;
+    border: none; box-shadow: none; margin: 0; padding: 0; border-radius: 0;
+    break-after: auto; page-break-after: auto;
   }
-  .form-sheet:last-child { break-after: auto; page-break-after: auto; }
+  /* 앞에 출력되는 서식이 있을 때만 새 페이지에서 시작 → 앞뒤 빈 페이지가 생기지 않는다 */
+  .form-sheet:not(.print-skip) ~ .form-sheet:not(.print-skip) { break-before: page; page-break-before: always; }
+  .form-sheet.print-skip { display: none !important; }
   .form-sheet.landscape { page: landscape; }
   .form-sheet table.form th { background: #e5e5e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .form-sheet table.form th, .form-sheet table.form td { font-size: 10pt; }
+  .form-sheet table.form { break-inside: auto; }
   td.editable:hover { background: inherit; }
 }

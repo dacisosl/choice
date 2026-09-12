@@ -669,7 +669,8 @@ function SettingsTab() {
               <input type="number" min={0} max={2} value={s.averageDecimals} onChange={(e) => setS({ ...s, averageDecimals: Number(e.target.value) })} />
             </label>
           </div>
-          <h3 style={{ marginTop: 12 }}>순위별 초안 목표 총점</h3>
+          <h3 style={{ marginTop: 12 }}>순위별 초안 총점 기준</h3>
+          <p className="muted small">아래 값은 중심값입니다. 자연스러운 흩뿌리기가 켜져 있으면 교사·출판사마다 이 값 근처에서 총점과 항목 점수가 달라집니다.</p>
           <div className="row">
             {(['r1', 'r2', 'r3', 'other'] as const).map((k) => (
               <label className="field" key={k}>
@@ -679,7 +680,7 @@ function SettingsTab() {
             ))}
           </div>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}>
-            <input type="checkbox" checked={s.jitter} onChange={(e) => setS({ ...s, jitter: e.target.checked })} /> ±1점 흔들림 (위원 간 완전 동일 점수 방지)
+            <input type="checkbox" checked={s.jitter} onChange={(e) => setS({ ...s, jitter: e.target.checked })} /> 점수 자연스럽게 흩뿌리기 (교사 성향·순위 간격·항목 배분을 무작위로 바꿔 표들이 서로 달라 보이게)
           </label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
             <input type="checkbox" checked={s.printPersonalRecommend} onChange={(e) => setS({ ...s, printPersonalRecommend: e.target.checked })} /> 개인 추천의견(서식3형)도 인쇄에 포함

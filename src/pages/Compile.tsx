@@ -5,6 +5,7 @@ import { fmtDate, useAppData } from '../store/useAppData'
 import { columnTotal, computeSummary, criteriaFor, publishersFor } from '../lib/scoring'
 import { aiGenerate } from '../lib/ai'
 import { readFileText } from '../lib/csv'
+import { printSheets } from '../lib/print'
 import { SubjectSelect } from '../components/SubjectSelect'
 import { Form1Sheet } from '../components/Form1Sheet'
 import { Form2Sheet } from '../components/Form2Sheet'
@@ -426,7 +427,7 @@ export function Compile() {
       {sum && subject && step === 3 && (
         <div>
           <div className="preview-toolbar card">
-            <button className="btn" onClick={() => window.print()}>
+            <button className="btn primary" onClick={() => printSheets()}>
               서식2 + 서식3 인쇄 / PDF
             </button>
             <span className="spacer" />

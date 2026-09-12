@@ -76,15 +76,92 @@ export function draftScores(
   return out
 }
 
+/** 정수 난수 [a, b] */
+function randInt(rng: () => number, a: number, b: number): number {
+  return a + Math.floor(rng() * (b - a + 1))
+}
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
+/**
+ * 목표 총점을 기준별로 "자연스럽게" 나눈다.
+ * 기준마다 상한의 55~100% 사이 무작위 가중치를 주고 목표에 맞게 비례 조정한 뒤,
+ * 상한을 넘는 몫은 여유 있는 기준으로 돌린다. 반올림 오차는 무작위 순서로 ±1 보정.
+ */
+function distributeNatural(criteria: Criterion[], target: number, rng: () => number): Record<string, number> {
+  if (!criteria.length) return {}
+  const max = criteria.map((c) => c.points)
+  const raw = max.map((m) => m * (0.55 + 0.45 * rng()))
+  const rawSum = raw.reduce((a, b) => a + b, 0)
+  let vals = raw.map((r, i) => Math.min(max[i], (r * target) / rawSum))
+  for (let k = 0; k < 8; k++) {
+    const cur = vals.reduce((a, b) => a + b, 0)
+    const deficit = target - cur
+    if (Math.abs(deficit) < 0.01) break
+    const room = vals.map((v, i) => (deficit > 0 ? max[i] - v : v))
+    const roomSum = room.reduce((a, b) => a + b, 0)
+    if (roomSum <= 0) break
+    vals = vals.map((v, i) => clamp(v + deficit * (room[i] / roomSum), 0, max[i]))
+  }
+  const out = vals.map((v) => Math.round(v))
+  let diff = target - out.reduce((a, b) => a + b, 0)
+  const order = criteria.map((_, i) => i).sort(() => rng() - 0.5)
+  let guard = 60
+  while (diff !== 0 && guard-- > 0) {
+    for (const i of order) {
+      if (diff > 0 && out[i] < max[i]) {
+        out[i]++
+        diff--
+      } else if (diff < 0 && out[i] > 0) {
+        out[i]--
+        diff++
+      }
+      if (diff === 0) break
+    }
+  }
+  return Object.fromEntries(criteria.map((c, i) => [c.id, out[i]]))
+}
+
+/**
+ * 순위 → 서식1 점수표 초안.
+ *
+ * settings.jitter 가 켜져 있으면(기본) 교사·과목·출판사마다 다른 시드로
+ *  - 교사 성향(후함/엄격) 편차 ±3
+ *  - 순위별 총점 간격 3~9점(순위 밖은 3~10점)을 무작위로 두고
+ *  - 기준별 배분도 비례가 아니라 흩뿌려서
+ * 여러 위원의 표를 모아 봐도 간격과 숫자가 일정해 보이지 않게 한다.
+ * 순위 간 총점 순서(1위 > 2위 > 3위 > 그 외)는 항상 유지된다.
+ * jitter 가 꺼져 있으면 설정된 목표 총점을 배점 비례로 정확히 나눈다.
+ */
 export function buildDraftScores(master: Master, ev: Pick<Evaluation, 'subjectId' | 'teacherName' | 'ranks'>): Evaluation['scores'] {
   const criteria = criteriaFor(master, ev.subjectId)
   const pubs = publishersFor(master, ev.subjectId)
+  const t = master.settings.targetScores
+  const vary = master.settings.jitter
   const scores: Evaluation['scores'] = {}
+
+  if (!vary) {
+    for (const p of pubs) {
+      scores[p.id] = draftScores(criteria, targetFor(master.settings, ev.ranks.indexOf(p.id)))
+    }
+    return scores
+  }
+
+  // 교사·과목 단위 시드: 같은 사람이 같은 과목을 다시 만들면 같은 초안, 다른 사람은 다른 초안
+  const rng = seededRand(hashStr(`${ev.teacherName}|${ev.subjectId}`))
+  const bias = randInt(rng, -3, 3)
+  const t1 = clamp(t.r1 + bias + randInt(rng, -2, 3), 60, 100)
+  const t2 = clamp(t1 - randInt(rng, 3, 9), 50, t1 - 2)
+  const t3 = clamp(t2 - randInt(rng, 3, 9), 45, t2 - 2)
+
   for (const p of pubs) {
     const rankIdx = ev.ranks.indexOf(p.id)
-    const target = targetFor(master.settings, rankIdx)
-    const seed = master.settings.jitter ? `${ev.teacherName}|${ev.subjectId}|${p.id}` : undefined
-    scores[p.id] = draftScores(criteria, target, seed)
+    let target: number
+    if (rankIdx === 0) target = t1
+    else if (rankIdx === 1) target = t2
+    else if (rankIdx === 2) target = t3
+    else target = clamp(t3 - randInt(rng, 3, 10), 40, t3 - 2) // 순위 밖은 출판사마다 다르게
+    const prng = seededRand(hashStr(`${ev.teacherName}|${ev.subjectId}|${p.id}`))
+    scores[p.id] = distributeNatural(criteria, target, prng)
   }
   return scores
 }
