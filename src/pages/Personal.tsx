@@ -3,7 +3,7 @@ import type { DocPublisher, Evaluation, RecommendItem } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
 import { lsGet, lsSet } from '../store/storage'
-import { buildDraftScores, criteriaFor, publishersFor } from '../lib/scoring'
+import { buildDraftScores, checkScoreEdit, criteriaFor, publishersFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheets } from '../lib/print'
 import { SubjectSelect } from '../components/SubjectSelect'
@@ -13,6 +13,7 @@ import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SchoolConnect } from '../components/SchoolConnect'
 import { SheetFit } from '../components/SheetFit'
+import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['선정 평가표', '추천 의견서', '인쇄·저장']
 const NAME_KEY = 'choice.teacherName'
@@ -21,6 +22,10 @@ const pubsKey = (subjectId: string) => `choice.pubs.${subjectId}`
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 열려 있는 의견 작성 창 */
 type OpenModal = { kind: 'summary' } | { kind: 'recommend'; rank: number } | null
+/** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
+type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
+
+const AI_NOTE = 'AI가 생성해 준 초안입니다. 참고자료로만 사용해 주세요.'
 
 export function Personal({ go }: { go: (h: string) => void }) {
   const { master, evaluations, saveEvaluation, deleteEvaluation, schoolStatus } = useAppData()
@@ -28,6 +33,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
   const [ev, setEv] = useState<Evaluation | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
   const [modal, setModal] = useState<OpenModal>(null)
+  const [notice, setNotice] = useState<Notice>(null)
   const saveTimer = useRef<number | null>(null)
 
   // 기본정보
@@ -194,6 +200,43 @@ export function Personal({ go }: { go: (h: string) => void }) {
 
   const pubName = (id: string | null) => ev?.publishers.find((p) => p.id === id)?.name || ''
   const ready = !!ev
+
+  /** 점수 수정: 배점을 넘거나 순위가 뒤집히면 넣지 않고 이유를 알려 준다 */
+  const changeScore = (pubId: string, critId: string, v: number) => {
+    if (!ev) return
+    const put = (n: number) => update({ scores: { ...ev.scores, [pubId]: { ...(ev.scores[pubId] || {}), [critId]: n } } })
+    const check = checkScoreEdit(ev, pubId, critId, v)
+    if (check.ok) return put(v)
+    setNotice({
+      title: '이 점수는 넣을 수 없습니다',
+      tone: 'warn',
+      lines: check.lines,
+      confirmLabel: check.suggestion === null ? undefined : `${check.suggestion}점으로 넣기`,
+      onConfirm: check.suggestion === null ? undefined : () => {
+        put(check.suggestion as number)
+        setNotice(null)
+      },
+    })
+  }
+
+  /** 인쇄 전에 책임·검토를 한 번 짚어 준다 */
+  const askPrint = () => {
+    if (!ev) return
+    setNotice({
+      title: '인쇄하기 전에 확인해 주세요',
+      tone: 'info',
+      lines: [
+        '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
+        'AI가 만든 초안입니다. 점수와 문장이 실제 검토 결과와 맞는지 반드시 확인하고 고친 뒤 제출해 주세요.',
+        '이름 · 과목 · 출판사 · 순위가 맞는지 다시 한 번 살펴 주세요.',
+      ],
+      confirmLabel: '확인했습니다, 인쇄',
+      onConfirm: () => {
+        setNotice(null)
+        printSheets(undefined, `선정서류_${ev.subjectName}_${ev.teacherName}`)
+      },
+    })
+  }
 
   const goNext = () => {
     if (!ready) return setMsg({ type: 'warn', text: '이름·과목·출판사(2곳 이상)·1순위를 채우면 평가표가 만들어집니다.' })
@@ -388,6 +431,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>선정 평가표</h2>
+                <span className="ai-note">{AI_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn primary" onClick={goNext}>
                     다음: 추천 의견서
@@ -403,7 +447,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   publishers={ev.publishers}
                   scores={ev.scores}
                   opinion={ev.summaryOpinion}
-                  onScoreChange={(pid, cid, v) => update({ scores: { ...ev.scores, [pid]: { ...(ev.scores[pid] || {}), [cid]: v } } })}
+                  onScoreChange={changeScore}
                   onOpinionChange={(v) => update({ summaryOpinion: v })}
                   onOpinionClick={() => setModal({ kind: 'summary' })}
                 />
@@ -415,6 +459,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>추천 의견서</h2>
+                <span className="ai-note">{AI_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(0)}>
                     이전
@@ -446,11 +491,12 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>인쇄·저장</h2>
+                <span className="ai-note">{AI_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={() => printSheets(undefined, `선정서류_${ev.subjectName}_${ev.teacherName}`)}>
+                  <button className="btn primary" onClick={askPrint}>
                     인쇄 / PDF 저장
                   </button>
                   <button className="btn" onClick={exportJson}>
@@ -458,10 +504,35 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   </button>
                 </div>
               </div>
-              <p className="muted small">평가표는 가로, 추천 의견서는 세로로 함께 출력됩니다. 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 평가표는 가로, 추천 의견서는 세로로 함께 출력되며, 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
               <div className="sheet-wrap">
-              <Form1Sheet subjectName={ev.subjectName} teacherName={ev.teacherName} criteria={ev.criteria} publishers={ev.publishers} scores={ev.scores} opinion={ev.summaryOpinion} readOnly />
-                <Form3Sheet variant="personal" subjectName={ev.subjectName} teacherName={ev.teacherName} publishers={ev.publishers} rows={ev.recommend} writer={{ position: '교사', name: ev.teacherName }} checker={{ position: '', name: '' }} readOnly />
+                <SheetFit fitHeight={false} minScale={0.5}>
+                <Form1Sheet
+                  subjectName={ev.subjectName}
+                  teacherName={ev.teacherName}
+                  criteria={ev.criteria}
+                  publishers={ev.publishers}
+                  scores={ev.scores}
+                  opinion={ev.summaryOpinion}
+                  onScoreChange={changeScore}
+                  onOpinionChange={(v) => update({ summaryOpinion: v })}
+                  onOpinionClick={() => setModal({ kind: 'summary' })}
+                />
+                </SheetFit>
+                <SheetFit fitHeight={false} minScale={0.5}>
+                <Form3Sheet
+                  variant="personal"
+                  subjectName={ev.subjectName}
+                  teacherName={ev.teacherName}
+                  publishers={ev.publishers}
+                  rows={ev.recommend}
+                  writer={{ position: '교사', name: ev.teacherName }}
+                  checker={{ position: '', name: '' }}
+                  onTextChange={(rank, v) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
+                  onPubChange={(rank, pid) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
+                  onOpinionClick={(rank) => setModal({ kind: 'recommend', rank })}
+                />
+                </SheetFit>
               </div>
             </div>
           )}
@@ -469,6 +540,22 @@ export function Personal({ go }: { go: (h: string) => void }) {
       </div>
 
       {renderModal()}
+      {notice && (
+        <NoticeModal
+          title={notice.title}
+          tone={notice.tone}
+          confirmLabel={notice.confirmLabel}
+          onConfirm={notice.onConfirm}
+          cancelLabel={notice.tone === 'info' ? '돌아가서 검토' : '닫기'}
+          onClose={() => setNotice(null)}
+        >
+          <ul className="notice-list">
+            {notice.lines.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </NoticeModal>
+      )}
     </div>
   )
 }

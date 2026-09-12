@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import type { DocPublisher, Person, Summary, SummaryMember, SummaryRecommend } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
-import { columnTotal, computeSummary } from '../lib/scoring'
+import { columnTotal, computeSummary, criteriaFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheets } from '../lib/print'
 import { importMemberFiles, squeezeName, type ImportProgress } from '../lib/pdfImport'
@@ -14,9 +14,14 @@ import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SchoolConnect } from '../components/SchoolConnect'
 import { SheetFit } from '../components/SheetFit'
+import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['점수표 올리기', '총괄표 확인', '인쇄·저장']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
+/** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
+type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
+
+const AI_NOTE = '올린 평가표에서 계산한 초안입니다. 원본과 대조해 확인해 주세요.'
 
 /** 위원 문서에서 이 출판사의 총점을 꺼낸다 (이름으로 맞춘다) */
 function totalOf(member: SummaryMember, pubName: string): number | null {
@@ -41,6 +46,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const [viewMember, setViewMember] = useState<SummaryMember | null>(null)
   const [modalRank, setModalRank] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [notice, setNotice] = useState<Notice>(null)
   const saveTimer = useRef<number | null>(null)
 
   const subject = master.subjects.find((s) => s.id === subjectId)
@@ -55,6 +61,53 @@ export function Compile({ go }: { go: (h: string) => void }) {
     setSum(next)
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => saveSummary(next).catch((e) => setMsg({ type: 'error', text: `저장 실패: ${e.message}` })), 800)
+  }
+
+  /** 위원 한 명이 줄 수 있는 최고 점수 (평가기준 배점의 합, 기본 100) */
+  const maxTotal = useMemo(() => {
+    const list = criteriaFor(master, sum?.subjectId || subjectId)
+    const total = list.reduce((a, c) => a + c.points, 0)
+    return total > 0 ? total : 100
+  }, [master, sum?.subjectId, subjectId])
+
+  /** 총괄표 점수 수정: 한 위원이 줄 수 있는 범위를 벗어나면 넣지 않는다 */
+  const changeCell = (pubId: string, memberId: string, v: number) => {
+    if (!sum) return
+    const put = (n: number) => update({ matrix: { ...sum.matrix, [pubId]: { ...(sum.matrix[pubId] || {}), [memberId]: n } } })
+    if (v >= 0 && v <= maxTotal) return put(v)
+    const fixed = Math.max(0, Math.min(maxTotal, v))
+    setNotice({
+      title: '이 점수는 넣을 수 없습니다',
+      tone: 'warn',
+      lines: [
+        `위원 한 명이 줄 수 있는 점수는 0~${maxTotal}점입니다.`,
+        '평가표 원본의 합계를 다시 확인해 주세요.',
+      ],
+      confirmLabel: `${fixed}점으로 넣기`,
+      onConfirm: () => {
+        put(fixed)
+        setNotice(null)
+      },
+    })
+  }
+
+  /** 인쇄 전에 책임·검토를 한 번 짚어 준다 */
+  const askPrint = () => {
+    if (!sum) return
+    setNotice({
+      title: '인쇄하기 전에 확인해 주세요',
+      tone: 'info',
+      lines: [
+        '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
+        '위원들이 올린 평가표에서 자동으로 계산한 초안입니다. 총점 · 평균 · 순위를 원본과 대조한 뒤 제출해 주세요.',
+        '위원 이름과 출판사명이 바르게 들어갔는지 다시 한 번 살펴 주세요.',
+      ],
+      confirmLabel: '확인했습니다, 인쇄',
+      onConfirm: () => {
+        setNotice(null)
+        printSheets(undefined, `총괄서류_${sum.subjectName}`)
+      },
+    })
   }
 
   // ───────────── 파일 올리기 ─────────────
@@ -431,6 +484,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
               <div className="card">
                 <div className="main-head">
                   <h2>평가 총괄표</h2>
+                  <span className="ai-note">{AI_NOTE}</span>
                   <div className="main-head-actions">
                     <button className="btn" onClick={() => setStep(0)}>
                       이전
@@ -464,7 +518,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                     writer={sum.writer}
                     checker={sum.checker}
                     sortByAverage={sortByAvg}
-                    onCellChange={(pid, mid, v) => update({ matrix: { ...sum.matrix, [pid]: { ...(sum.matrix[pid] || {}), [mid]: v } } })}
+                    onCellChange={changeCell}
                   />
                 </SheetFit>
                 <div className="row">
@@ -557,11 +611,12 @@ export function Compile({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>인쇄·저장</h2>
+                <span className="ai-note">{AI_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={() => printSheets(undefined, `총괄서류_${sum.subjectName}`)}>
+                  <button className="btn primary" onClick={askPrint}>
                     인쇄 / PDF 저장
                   </button>
                   <button className="btn" onClick={exportJson}>
@@ -569,9 +624,35 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   </button>
                 </div>
               </div>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 총괄표는 가로, 추천 의견서는 세로로 함께 출력됩니다.</p>
               <div className="sheet-wrap">
-              <Form2Sheet subjectName={sum.subjectName} publishers={sum.publishers} members={memberCols} matrix={sum.matrix} headerMode={master.settings.memberHeaderMode} decimals={master.settings.averageDecimals} writer={sum.writer} checker={sum.checker} readOnly sortByAverage={sortByAvg} />
-                <Form3Sheet variant="official" subjectName={sum.subjectName} publishers={sum.publishers} rows={sum.recommendDoc} writer={sum.recommendWriter} checker={sum.recommendChecker} readOnly />
+                <SheetFit fitHeight={false} minScale={0.5}>
+                <Form2Sheet
+                  subjectName={sum.subjectName}
+                  publishers={sum.publishers}
+                  members={memberCols}
+                  matrix={sum.matrix}
+                  headerMode={master.settings.memberHeaderMode}
+                  decimals={master.settings.averageDecimals}
+                  writer={sum.writer}
+                  checker={sum.checker}
+                  sortByAverage={sortByAvg}
+                  onCellChange={changeCell}
+                />
+                </SheetFit>
+                <SheetFit fitHeight={false} minScale={0.5}>
+                <Form3Sheet
+                  variant="official"
+                  subjectName={sum.subjectName}
+                  publishers={sum.publishers}
+                  rows={sum.recommendDoc}
+                  writer={sum.recommendWriter}
+                  checker={sum.recommendChecker}
+                  onTextChange={(rank, v) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
+                  onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
+                  onOpinionClick={(rank) => setModalRank(rank)}
+                />
+                </SheetFit>
               </div>
             </div>
           )}
@@ -579,6 +660,22 @@ export function Compile({ go }: { go: (h: string) => void }) {
       </div>
 
       {renderModal()}
+      {notice && (
+        <NoticeModal
+          title={notice.title}
+          tone={notice.tone}
+          confirmLabel={notice.confirmLabel}
+          onConfirm={notice.onConfirm}
+          cancelLabel={notice.tone === 'info' ? '돌아가서 검토' : '닫기'}
+          onClose={() => setNotice(null)}
+        >
+          <ul className="notice-list">
+            {notice.lines.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </NoticeModal>
+      )}
     </div>
   )
 }

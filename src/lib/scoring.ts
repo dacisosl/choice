@@ -229,3 +229,80 @@ export function computeSummary(
   for (const r of Object.values(ranks)) tieCounts[r] = (tieCounts[r] || 0) + 1
   return { totals, averages, ranks, tieCounts }
 }
+
+export interface ScoreEditCheck {
+  ok: boolean
+  /** 이 칸에 넣을 수 있는 가장 낮은 점수 */
+  min: number
+  /** 이 칸에 넣을 수 있는 가장 높은 점수 (min 보다 작으면 이 칸만으로는 맞출 수 없다) */
+  max: number
+  /** 넣으려던 값에서 가장 가까운 허용값 (없으면 null) */
+  suggestion: number | null
+  /** 안내 창에 그대로 보여 줄 문장들 */
+  lines: string[]
+}
+
+/**
+ * 손으로 고친 점수가 서류를 깨뜨리지 않는지 본다.
+ *
+ * · 칸마다 0 ~ 그 기준의 배점 (그래야 합계도 총배점을 넘지 않는다)
+ * · 1순위 > 2순위 > 3순위 > 순위 밖 순서로 합계가 유지되어야 한다.
+ *   동점이면 서류만 보고 어느 쪽이 위인지 알 수 없으므로 동점도 막는다.
+ */
+export function checkScoreEdit(ev: Evaluation, pubId: string, critId: string, value: number): ScoreEditCheck {
+  const crit = ev.criteria.find((c) => c.id === critId)
+  if (!crit) return { ok: true, min: 0, max: 0, suggestion: value, lines: [] }
+
+  const cap = crit.points
+  const nameOf = (id: string) => ev.publishers.find((p) => p.id === id)?.name || '다른 출판사'
+  const totalOf = (id: string) => columnTotal(ev.scores[id], ev.criteria)
+  const rankWord = (id: string) => {
+    const i = ev.ranks.indexOf(id)
+    return i >= 0 ? `${i + 1}순위` : '순위에 없는'
+  }
+  /** 이 칸을 뺀 나머지 합계 */
+  const rest = totalOf(pubId) - (Number(ev.scores[pubId]?.[critId]) || 0)
+
+  const ranked = ev.ranks.filter((id): id is string => !!id && ev.publishers.some((p) => p.id === id))
+  const idx = ranked.indexOf(pubId)
+  const unranked = ev.publishers.filter((p) => !ranked.includes(p.id)).map((p) => p.id)
+
+  let loTotal = 0
+  let hiTotal = Number.POSITIVE_INFINITY
+  /** 이 출판사보다 낮아야 한다 */
+  let above: string | null = null
+  /** 이 출판사보다 높아야 한다 */
+  let below: string | null = null
+
+  if (idx >= 0) {
+    if (idx > 0) {
+      above = ranked[idx - 1]
+      hiTotal = totalOf(above) - 1
+    }
+    if (idx < ranked.length - 1) {
+      below = ranked[idx + 1]
+      loTotal = totalOf(below) + 1
+    } else if (unranked.length) {
+      // 마지막 순위는 순위에 없는 출판사들보다 높아야 한다
+      below = unranked.reduce((best, id) => (totalOf(id) > totalOf(best) ? id : best), unranked[0])
+      loTotal = totalOf(below) + 1
+    }
+  } else if (ranked.length) {
+    // 순위에 없는 출판사는 가장 낮은 순위보다 낮아야 한다
+    above = ranked[ranked.length - 1]
+    hiTotal = totalOf(above) - 1
+  }
+
+  const min = Math.max(0, loTotal - rest)
+  const max = Math.min(cap, hiTotal - rest)
+  if (value >= min && value <= max) return { ok: true, min, max, suggestion: value, lines: [] }
+
+  const lines: string[] = []
+  if (value > cap) lines.push(`이 항목의 배점은 ${cap}점입니다. 그보다 높은 점수는 넣을 수 없습니다.`)
+  if (above) lines.push(`${nameOf(pubId)}의 합계는 ${rankWord(above)} ${nameOf(above)}(${totalOf(above)}점)보다 낮아야 합니다.`)
+  if (below) lines.push(`${nameOf(pubId)}의 합계는 ${rankWord(below)} ${nameOf(below)}(${totalOf(below)}점)보다 높아야 합니다.`)
+  if (min <= max) lines.push(`이 칸에는 ${min}~${max}점을 넣을 수 있습니다.`)
+  else lines.push('이 칸만으로는 순위를 지킬 수 없습니다. 다른 칸의 점수를 먼저 조정해 주세요.')
+
+  return { ok: false, min, max, suggestion: min <= max ? Math.max(min, Math.min(max, value)) : null, lines }
+}

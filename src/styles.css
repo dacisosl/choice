@@ -383,9 +383,23 @@ td.num { text-align: center; }
 .sheet-fit.scrolls { overflow-y: auto; overflow-x: hidden; }
 .sheet-fit-inner { transform-origin: top left; width: max-content; }
 /* 문서 영역 머리줄: 제목 왼쪽, 이동·인쇄 버튼 오른쪽 */
-.main-head { display: flex; align-items: flex-start; gap: 12px; }
-.main-head > h2 { flex: 1 1 auto; margin: 0; }
-.main-head-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+.main-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.main-head > h2 { flex: 0 0 auto; margin: 0; }
+.main-head-actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
+/* 초안이라는 것을 알리는 빨간 한 줄 (인쇄에는 나오지 않는다) */
+.ai-note { flex: 0 1 auto; align-self: center; color: #c0392b; font-weight: 700; font-size: 13.5px; word-break: keep-all; line-height: 1.4; }
+
+/* 안내 창: 점수 수정 제한·인쇄 전 확인 */
+.modal.notice-modal { width: min(520px, 100%); }
+.notice-modal .modal-body { padding: 16px 20px 6px; }
+.notice-icon {
+  flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: #fff; background: #c0392b;
+}
+.notice-modal.info .notice-icon { background: var(--primary, #2f6b4f); }
+.notice-list { margin: 0; padding-left: 20px; }
+.notice-list li { margin-bottom: 9px; line-height: 1.6; color: var(--text); word-break: keep-all; }
 .school-tip { background: var(--primary-soft); border-color: var(--primary-soft-line); font-size: 13px; }
 .school-tip b { color: var(--title); }
 .school-tip p { margin: 6px 0 10px; color: var(--text-2); line-height: 1.5; }
