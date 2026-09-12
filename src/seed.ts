@@ -50,6 +50,7 @@ const SUBJECT_TABLE: [string, string, string[]][] = [
   ['3', '제2외국어', ['일본 문화', '일본어 회화', '중국 문화', '중국어 회화']],
 ]
 
+/** 계획서에 실린 선정 대상 과목 예시. 설정 화면에서 불러와 쓸 수 있다 */
 export function seedSubjects(): Subject[] {
   const out: Subject[] = []
   let i = 0
@@ -61,7 +62,6 @@ export function seedSubjects(): Subject[] {
         name,
         gradeGroup: grade as Subject['gradeGroup'],
         subjectGroup: group,
-        status: 'open',
       })
     }
   }
@@ -120,9 +120,6 @@ export const DEFAULT_SETTINGS: Settings = {
   memberHeaderMode: 'name',
   printPersonalRecommend: true,
   averageDecimals: 1,
-  accessCode: '',
-  compilerCode: '',
-  adminCode: '1234',
   aiModel: 'openai/gpt-4o-mini',
   aiFallbackModel: 'google/gemini-flash-1.5',
   aiMaxPerDoc: 10,
@@ -130,13 +127,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export function seedMaster(overrides?: Partial<Settings>): Master {
   return {
-    version: 1,
+    version: 2,
     settings: { ...DEFAULT_SETTINGS, ...overrides },
-    subjects: seedSubjects(),
+    subjects: [],
     publishers: [],
     criteria: seedCriteria(),
     opinionOptions: seedOpinionOptions(),
-    committee: [],
     updatedAt: new Date().toISOString(),
   }
 }

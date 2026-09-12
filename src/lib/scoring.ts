@@ -1,4 +1,4 @@
-import type { Criterion, Evaluation, Master, Publisher, Settings } from '../types'
+import type { Criterion, DocPublisher, Evaluation, Master, Publisher, Settings } from '../types'
 
 /** 결정적 해시 (seed용) */
 function hashStr(s: string): number {
@@ -122,7 +122,7 @@ function distributeNatural(criteria: Criterion[], target: number, rng: () => num
 }
 
 /**
- * 순위 → 서식1 점수표 초안.
+ * 순위 → 서식1 점수표 초안. 과목의 출판사·평가기준을 그대로 받는다(문서 스냅샷 기준).
  *
  * settings.jitter 가 켜져 있으면(기본) 교사·과목·출판사마다 다른 시드로
  *  - 교사 성향(후함/엄격) 편차 ±3
@@ -132,16 +132,19 @@ function distributeNatural(criteria: Criterion[], target: number, rng: () => num
  * 순위 간 총점 순서(1위 > 2위 > 3위 > 그 외)는 항상 유지된다.
  * jitter 가 꺼져 있으면 설정된 목표 총점을 배점 비례로 정확히 나눈다.
  */
-export function buildDraftScores(master: Master, ev: Pick<Evaluation, 'subjectId' | 'teacherName' | 'ranks'>): Evaluation['scores'] {
-  const criteria = criteriaFor(master, ev.subjectId)
-  const pubs = publishersFor(master, ev.subjectId)
-  const t = master.settings.targetScores
-  const vary = master.settings.jitter
+export function buildDraftScores(
+  settings: Settings,
+  criteria: Criterion[],
+  publishers: DocPublisher[],
+  ev: Pick<Evaluation, 'subjectId' | 'teacherName' | 'ranks'>,
+): Evaluation['scores'] {
+  const t = settings.targetScores
+  const vary = settings.jitter
   const scores: Evaluation['scores'] = {}
 
   if (!vary) {
-    for (const p of pubs) {
-      scores[p.id] = draftScores(criteria, targetFor(master.settings, ev.ranks.indexOf(p.id)))
+    for (const p of publishers) {
+      scores[p.id] = draftScores(criteria, targetFor(settings, ev.ranks.indexOf(p.id)))
     }
     return scores
   }
@@ -153,7 +156,7 @@ export function buildDraftScores(master: Master, ev: Pick<Evaluation, 'subjectId
   const t2 = clamp(t1 - randInt(rng, 3, 9), 50, t1 - 2)
   const t3 = clamp(t2 - randInt(rng, 3, 9), 45, t2 - 2)
 
-  for (const p of pubs) {
+  for (const p of publishers) {
     const rankIdx = ev.ranks.indexOf(p.id)
     let target: number
     if (rankIdx === 0) target = t1

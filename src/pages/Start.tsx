@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useAppData } from '../store/useAppData'
-import { useAuth } from '../store/auth'
 
 /** public/hero.png 가 있으면 사진을 배경으로 쓴다 (문구가 없는 책·책상 부분만 잘라서 사용) */
 const HERO_URL = `${import.meta.env.BASE_URL}hero.png`
@@ -63,104 +61,54 @@ function FrontCoverArt() {
 }
 
 export function Start({ go }: { go: (h: string) => void }) {
-  const { master, mode, evaluations, summaries } = useAppData()
-  const { enabled: authEnabled, isApproved } = useAuth()
-  const submitted = evaluations.filter((e) => e.status === 'submitted').length
-  const finalized = summaries.filter((s) => s.status === 'finalized').length
-  const openSubjects = master.subjects.filter((s) => master.publishers.filter((p) => p.subjectId === s.id).length > 1).length
-  const showStats = !authEnabled || isApproved
   const heroImg = useHeroImage()
-
   if (heroImg === null) return <section className="hero-split" style={{ minHeight: 560 }} />
 
   return (
-    <>
-      <section className={`hero-split ${heroImg ? 'with-photo' : ''}`}>
-        {heroImg && (
-          <div className="hero-photo" aria-hidden="true">
-            <img src={HERO_URL} alt="" />
-          </div>
-        )}
-
-        <div className="hero-left">
-          <div className="eyebrow">선생님을 위한 문서 작성 도구</div>
-          <h1>
-            교과서 선정 서류,
-            <br />
-            초안부터 간편하게
-          </h1>
-          <p className="lead">교과서 정보를 입력하면 선정에 필요한 서류 초안을 만들어 드려요.</p>
-          {!heroImg && (
-            <div className="books-fallback" aria-hidden="true">
-              <div className="book front">
-                <div className="spine">교과서</div>
-                <div className="cover">
-                  <div className="title">교과서</div>
-                  <div className="sub">배움의 시작</div>
-                  <FrontCoverArt />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="hero-right">
-          <button className="cta-tall" onClick={() => go('personal')}>
-            <span className="cta-tall-label">여기를 눌러 시작하세요</span>
-            <span className="cta-tall-title">
-              서류 초안
-              <br />
-              작성하기
-            </span>
-            <span className="cta-tall-arrow" aria-hidden="true">
-              →
-            </span>
-          </button>
-          <div className="compile-ask">총괄 작성 교사이신가요?</div>
-          <button className="chip-pill" onClick={() => go('compile')}>
-            평가총괄표 작성 <span aria-hidden="true">→</span>
-          </button>
-        </div>
-      </section>
-
-      <div className="steps3">
-        <div className="s">
-          <div className="num">01</div>
-          <div>
-            <h4>교과서 정보 입력</h4>
-            <p>교과서 기본 정보를 입력해 주세요.</p>
-          </div>
-        </div>
-        <div className="s">
-          <div className="num">02</div>
-          <div>
-            <h4>선정 기준 정리</h4>
-            <p>학교의 선정 기준에 맞춰 내용을 정리해요.</p>
-          </div>
-        </div>
-        <div className="s">
-          <div className="num">03</div>
-          <div>
-            <h4>서류 초안 확인</h4>
-            <p>입력한 내용을 바탕으로 초안을 바로 확인해요.</p>
-          </div>
-        </div>
-      </div>
-
-      {showStats && (
-        <div className="stats-line">
-          <span>
-            작성 가능 과목 <b>{openSubjects}</b>
-          </span>
-          <span>
-            제출 <b>{submitted}</b>건
-          </span>
-          <span>
-            총괄 확정 <b>{finalized}</b>과목
-          </span>
-          <span>{mode === 'local' ? '이 브라우저 저장 모드' : '온라인 공유 모드'}</span>
+    <section className={`hero-split ${heroImg ? 'with-photo' : ''}`}>
+      {heroImg && (
+        <div className="hero-photo" aria-hidden="true">
+          <img src={HERO_URL} alt="" />
         </div>
       )}
-    </>
+
+      <div className="hero-left">
+        <h1>
+          교과서 선정 서류,
+          <br />
+          초안부터 간편하게
+        </h1>
+        {!heroImg && (
+          <div className="books-fallback" aria-hidden="true">
+            <div className="book front">
+              <div className="spine">교과서</div>
+              <div className="cover">
+                <div className="title">교과서</div>
+                <div className="sub">배움의 시작</div>
+                <FrontCoverArt />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="hero-right">
+        <button className="cta-tall" onClick={() => go('personal')}>
+          <span className="cta-tall-label">여기를 눌러 시작하세요</span>
+          <span className="cta-tall-title">
+            서류 초안
+            <br />
+            작성하기
+          </span>
+          <span className="cta-tall-arrow" aria-hidden="true">
+            →
+          </span>
+        </button>
+        <div className="compile-ask">총괄 작성 교사이신가요?</div>
+        <button className="chip-pill" onClick={() => go('compile')}>
+          평가총괄표 작성 <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </section>
   )
 }

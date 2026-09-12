@@ -6,7 +6,6 @@ export interface Subject {
   name: string
   gradeGroup: GradeGroup
   subjectGroup: string
-  status: 'open' | 'closed'
 }
 
 export interface Publisher {
@@ -40,13 +39,6 @@ export interface OpinionOption {
   negative?: boolean
 }
 
-export interface CommitteeMember {
-  id: string
-  subjectId: string
-  teacherName: string
-  role: 'member' | 'lead' | 'compiler'
-}
-
 export interface Settings {
   schoolName: string
   year: number
@@ -56,14 +48,12 @@ export interface Settings {
   memberHeaderMode: 'name' | 'number'
   printPersonalRecommend: boolean
   averageDecimals: number
-  accessCode: string
-  compilerCode: string
-  adminCode: string
   aiModel: string
   aiFallbackModel: string
   aiMaxPerDoc: number
 }
 
+/** 과목·출판사·평가기준·의견 선택지·설정. 공유 저장소(Firestore)에 두는 유일한 데이터 */
 export interface Master {
   version: number
   settings: Settings
@@ -71,7 +61,6 @@ export interface Master {
   publishers: Publisher[]
   criteria: Criterion[]
   opinionOptions: OpinionOption[]
-  committee: CommitteeMember[]
   updatedAt: string
 }
 
@@ -85,36 +74,29 @@ export interface RecommendItem {
   text: string
 }
 
-export type MemberStatus = 'pending' | 'approved' | 'rejected'
-export type MemberRole = 'member' | 'admin'
-
-/** 구글 로그인 사용자. 관리자가 승인해야 앱을 쓸 수 있다. */
-export interface Member {
-  uid: string
-  email: string
-  /** 로그인 후 본인이 입력한 이름. 서식의 위원명으로 쓰인다. */
-  displayName: string
-  role: MemberRole
-  status: MemberStatus
-  requestedAt: string
-  decidedAt?: string
-  note?: string
+/** 문서 안에서만 쓰는 출판사 스냅샷 (마스터와 무관하게 해석 가능) */
+export interface DocPublisher {
+  id: string
+  name: string
 }
 
+/**
+ * 위원 개인 평가표(서식1 + 개인 서식3). 이 컴퓨터에만 저장되며 PDF/JSON으로만 전달된다.
+ * 다른 컴퓨터에서도 해석되도록 과목명·출판사·평가기준을 스냅샷으로 품고 있다.
+ */
 export interface Evaluation {
   id: string
   subjectId: string
+  subjectName: string
   teacherName: string
-  /** 로그인 모드에서 제출자 식별 (규칙에서 본인 문서만 수정 허용) */
-  uid?: string
+  publishers: DocPublisher[]
+  criteria: Criterion[]
   ranks: (string | null)[] // 1,2,3순위 pubId
   scores: Record<string, Record<string, number>> // pubId -> criterionId -> score
   summaryKeys: string[]
   summaryOpinion: string
   recommend: RecommendItem[]
-  status: 'draft' | 'submitted'
   aiCount: number
-  submittedAt?: string
   updatedAt: string
 }
 
@@ -129,55 +111,50 @@ export interface SummaryRecommend {
   text: string
 }
 
+export type MemberSource = 'pdf' | 'pdf-ocr' | 'json' | 'manual'
+
+/** 총괄표의 위원 열 하나. PDF/JSON에서 읽은 원본 문서를 함께 보관한다 */
+export interface SummaryMember {
+  id: string
+  teacherName: string
+  source: MemberSource
+  evaluation?: Evaluation
+  warnings: string[]
+}
+
+/** 과목별 총괄표(서식2 + 공식 서식3). 총괄 교사의 컴퓨터에만 저장된다 */
 export interface Summary {
   id: string
   subjectId: string
-  memberColumns: { teacherName: string; evaluationId: string }[]
-  matrix: Record<string, Record<string, number>> // pubId -> evaluationId -> total
+  subjectName: string
+  publishers: DocPublisher[]
+  members: SummaryMember[]
+  matrix: Record<string, Record<string, number>> // pubId -> memberId -> total
   writer: Person
   checker: Person
   recommendDoc: SummaryRecommend[]
   recommendWriter: Person
   recommendChecker: Person
-  status: 'draft' | 'finalized'
   aiCount: number
-  finalizedAt?: string
   updatedAt: string
 }
 
+/** 마스터 공유용 Firebase 설정. 개인 문서는 저장하지 않는다 */
 export interface FirebaseConfig {
   apiKey?: string
   authDomain?: string
   projectId?: string
   appId?: string
-  /** 컬렉션 이름 (기본 docs). 기존 Firebase 프로젝트를 여러 앱이 공유할 때 앱별로 다르게 지정 */
+  /** 컬렉션 이름 (기본 choice_docs) */
   collection?: string
-  /** Firestore 데이터베이스 ID. 비우면 (default). 프로젝트에 앱 전용 DB를 만들었으면 그 이름 */
+  /** Firestore 데이터베이스 ID. 비우면 (default) */
   databaseId?: string
-  /** App Check: 등록된 사이트에서 온 요청만 Firestore에 통과시킴 */
-  appCheck?: AppCheckConfig
-  /**
-   * 최초 관리자 구글 계정. 승인 없이도 관리자로 동작한다.
-   * Firestore 규칙의 isOwner() 이메일과 반드시 같아야 한다.
-   */
-  ownerEmail?: string
-}
-
-export interface AppCheckConfig {
-  /** reCAPTCHA 종류. 신규 등록은 enterprise 권장 */
-  provider?: 'enterprise' | 'v3'
-  /** reCAPTCHA 사이트 키(공개 값). 비어 있으면 App Check를 켜지 않음 */
-  siteKey?: string
-  /** localhost 개발용 디버그 토큰. 배포본에서는 무시됨 */
-  debugToken?: string
+  /** 설정을 고칠 수 있는 관리자 구글 계정. Firestore 규칙의 목록과 같아야 한다 */
+  adminEmails?: string[]
 }
 
 export interface AppConfig {
   schoolName?: string
   year?: number
-  supabaseUrl?: string
-  supabaseAnonKey?: string
-  /** 테이블 이름 (기본 docs) */
-  supabaseTable?: string
   firebase?: FirebaseConfig
 }

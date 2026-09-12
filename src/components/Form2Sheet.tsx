@@ -1,11 +1,11 @@
-import type { Person, Publisher } from '../types'
+import type { DocPublisher, Person, SummaryMember } from '../types'
 import { computeSummary, rankLabel } from '../lib/scoring'
 import { NumberCell } from './EditableCell'
 
 interface Props {
   subjectName: string
-  publishers: Publisher[]
-  members: { teacherName: string; evaluationId: string }[]
+  publishers: DocPublisher[]
+  members: Pick<SummaryMember, 'id' | 'teacherName'>[]
   matrix: Record<string, Record<string, number>>
   headerMode: 'name' | 'number'
   decimals: number
@@ -13,14 +13,14 @@ interface Props {
   checker: Person
   readOnly?: boolean
   sortByAverage?: boolean
-  onCellChange?: (pubId: string, evaluationId: string, v: number) => void
+  onCellChange?: (pubId: string, memberId: string, v: number) => void
 }
 
 /** 【서식2】 검정(인정)도서 선정기준 평가 총괄표 — A4 세로 */
 export function Form2Sheet({ subjectName, publishers, members, matrix, headerMode, decimals, writer, checker, readOnly, sortByAverage, onCellChange }: Props) {
-  const evalIds = members.map((m) => m.evaluationId)
+  const memberIds = members.map((m) => m.id)
   const pubIds = publishers.map((p) => p.id)
-  const computed = computeSummary(matrix, pubIds, evalIds, decimals)
+  const computed = computeSummary(matrix, pubIds, memberIds, decimals)
   const rows = sortByAverage ? [...publishers].sort((a, b) => computed.averages[b.id] - computed.averages[a.id]) : publishers
   const M = members.length
 
@@ -38,7 +38,7 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
         <colgroup>
           <col style={{ width: 110 }} />
           {members.map((m) => (
-            <col key={m.evaluationId} />
+            <col key={m.id} />
           ))}
           {M === 0 && <col />}
           <col style={{ width: 62 }} />
@@ -55,7 +55,7 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
           </tr>
           <tr>
             {members.map((m, i) => (
-              <th key={m.evaluationId} style={{ fontSize: '9.5pt' }}>
+              <th key={m.id} style={{ fontSize: '9.5pt' }}>
                 {headerMode === 'name' ? m.teacherName : `위원${i + 1}`}
               </th>
             ))}
@@ -68,10 +68,10 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
               <td className="c">{p.name}</td>
               {members.map((m) => (
                 <NumberCell
-                  key={m.evaluationId}
-                  value={Number(matrix[p.id]?.[m.evaluationId]) || 0}
+                  key={m.id}
+                  value={Number(matrix[p.id]?.[m.id]) || 0}
                   readOnly={readOnly}
-                  onChange={(v) => onCellChange?.(p.id, m.evaluationId, v)}
+                  onChange={(v) => onCellChange?.(p.id, m.id, v)}
                 />
               ))}
               {M === 0 && <td />}

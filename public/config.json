@@ -2,29 +2,14 @@
   "schoolName": "해밀고등학교",
   "year": 2027,
 
-  "_comment": "Supabase 또는 firebase 중 하나만 채우면 온라인 공유 모드로 동작합니다. 둘 다 비어 있으면 브라우저 저장 모드.",
-
-  "supabaseUrl": "",
-  "supabaseAnonKey": "",
-
+  "_firebase": "학교 계정(이메일·비밀번호)과 학교별 과목·출판사 공유에만 쓰입니다. 비워 두면 계정 기능이 꺼지고 과목·출판사를 각 컴퓨터에서 직접 입력합니다.",
   "firebase": {
     "apiKey": "AIzaSyBx37L145oA0O3Ls0hI1bd722FVMseRvfw",
     "authDomain": "edit-help.firebaseapp.com",
     "projectId": "edit-help",
     "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
-    "collection": "choice_docs",
 
-    "_databaseId": "Firestore 데이터베이스 ID. 프로젝트에 이 앱 전용으로 만든 DB 이름. 비우면 (default).",
-    "databaseId": "choice",
-
-    "_ownerEmail": "최초 관리자 구글 계정. Firestore 규칙의 isOwner() 이메일과 같아야 합니다.",
-    "ownerEmail": "schoooolid@gmail.com",
-
-    "_appCheck": "siteKey를 넣으면 App Check가 켜집니다. 콘솔에서 Firestore 적용(enforce)까지 해야 실제로 차단됩니다.",
-    "appCheck": {
-      "provider": "enterprise",
-      "siteKey": "",
-      "debugToken": ""
-    }
+    "_databaseId": "Firestore 데이터베이스 ID. 비우면 (default).",
+    "databaseId": "choice"
   }
 }

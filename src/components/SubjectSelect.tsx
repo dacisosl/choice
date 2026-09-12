@@ -35,7 +35,6 @@ export function SubjectSelect({ subjects, value, onChange, disabled }: Props) {
               .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
-                  {s.status === 'closed' ? ' (마감)' : ''}
                 </option>
               ))}
           </optgroup>

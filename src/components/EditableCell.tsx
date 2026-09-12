@@ -62,10 +62,14 @@ interface TextProps {
   placeholder?: string
   colSpan?: number
   rowSpan?: number
+  /** 주면 인라인 편집 대신 이 함수를 부른다 (의견 작성 창 열기) */
+  onOpen?: () => void
+  /** onOpen 이 있을 때 빈 칸에 보여 줄 안내 */
+  openHint?: string
 }
 
-/** 텍스트 셀: 클릭 → 자동 높이 textarea */
-export function TextCell({ value, readOnly, onChange, className, placeholder, colSpan, rowSpan }: TextProps) {
+/** 텍스트 셀: 클릭 → 자동 높이 textarea (onOpen 이 있으면 창 열기) */
+export function TextCell({ value, readOnly, onChange, className, placeholder, colSpan, rowSpan, onOpen, openHint }: TextProps) {
   const [editing, setEditing] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   useEffect(() => {
@@ -80,7 +84,12 @@ export function TextCell({ value, readOnly, onChange, className, placeholder, co
       className={`editable ${className || ''}`}
       colSpan={colSpan}
       rowSpan={rowSpan}
-      onClick={() => !readOnly && !editing && setEditing(true)}
+      onClick={() => {
+        if (readOnly) return
+        if (onOpen) return onOpen()
+        if (!editing) setEditing(true)
+      }}
+      title={!readOnly && onOpen ? (openHint || '클릭하여 의견 작성') : undefined}
     >
       {editing ? (
         <textarea
@@ -99,7 +108,7 @@ export function TextCell({ value, readOnly, onChange, className, placeholder, co
         value
       ) : (
         <span className="muted no-print" style={{ fontFamily: 'Malgun Gothic, sans-serif', fontSize: 12 }}>
-          {readOnly ? '' : placeholder || '클릭하여 입력'}
+          {readOnly ? '' : onOpen ? openHint || '클릭하여 의견 작성' : placeholder || '클릭하여 입력'}
         </span>
       )}
     </td>

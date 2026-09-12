@@ -1,4 +1,4 @@
-import type { Person, Publisher } from '../types'
+import type { DocPublisher, Person } from '../types'
 import { TextCell } from './EditableCell'
 
 export interface Form3Row {
@@ -9,7 +9,7 @@ export interface Form3Row {
 
 interface Props {
   subjectName: string
-  publishers: Publisher[]
+  publishers: DocPublisher[]
   rows: Form3Row[]
   writer: Person
   checker: Person
@@ -19,10 +19,12 @@ interface Props {
   readOnly?: boolean
   onTextChange?: (rank: number, v: string) => void
   onPubChange?: (rank: number, pubId: string) => void
+  /** 주면 추천의견 칸 클릭 시 의견 작성 창을 연다 */
+  onOpinionClick?: (rank: number) => void
 }
 
 /** 【서식3】 추천 검정(인정)도서 및 추천 의견서 — A4 세로 */
-export function Form3Sheet({ subjectName, publishers, rows, writer, checker, variant, teacherName, readOnly, onTextChange, onPubChange }: Props) {
+export function Form3Sheet({ subjectName, publishers, rows, writer, checker, variant, teacherName, readOnly, onTextChange, onPubChange, onOpinionClick }: Props) {
   const pubName = (id: string | null) => publishers.find((p) => p.id === id)?.name || ''
   return (
     <div className={`form-sheet ${readOnly ? 'readonly' : ''}`}>
@@ -78,7 +80,9 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
                 value={r.text}
                 readOnly={readOnly}
                 onChange={(v) => onTextChange?.(r.rank, v)}
-                placeholder="핵심의견을 선택하고 [의견 생성]을 누르거나 직접 입력하세요"
+                onOpen={onOpinionClick ? () => onOpinionClick(r.rank) : undefined}
+                openHint="클릭하여 추천의견 작성"
+                placeholder="클릭하여 추천의견을 작성하세요"
               />
             </tr>
           ))}

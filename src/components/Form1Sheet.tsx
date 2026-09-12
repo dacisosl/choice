@@ -1,4 +1,4 @@
-import type { Criterion, Publisher } from '../types'
+import type { Criterion, DocPublisher } from '../types'
 import { columnTotal } from '../lib/scoring'
 import { NumberCell, TextCell } from './EditableCell'
 
@@ -6,16 +6,18 @@ interface Props {
   subjectName: string
   teacherName: string
   criteria: Criterion[]
-  publishers: Publisher[]
+  publishers: DocPublisher[]
   scores: Record<string, Record<string, number>>
   opinion: string
   readOnly?: boolean
   onScoreChange?: (pubId: string, critId: string, v: number) => void
   onOpinionChange?: (v: string) => void
+  /** 주면 종합의견 칸 클릭 시 의견 작성 창을 연다 */
+  onOpinionClick?: () => void
 }
 
 /** 【서식1】 검정(인정)도서 선정 평가표 — A4 가로 */
-export function Form1Sheet({ subjectName, teacherName, criteria, publishers, scores, opinion, readOnly, onScoreChange, onOpinionChange }: Props) {
+export function Form1Sheet({ subjectName, teacherName, criteria, publishers, scores, opinion, readOnly, onScoreChange, onOpinionChange, onOpinionClick }: Props) {
   const N = publishers.length
   const totalPoints = criteria.reduce((s, c) => s + c.points, 0)
 
@@ -127,7 +129,9 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
               value={opinion}
               readOnly={readOnly}
               onChange={(v) => onOpinionChange?.(v)}
-              placeholder="핵심의견을 선택하고 [의견 생성]을 누르거나 직접 입력하세요"
+              onOpen={onOpinionClick}
+              openHint="클릭하여 종합의견 작성"
+              placeholder="클릭하여 종합의견을 작성하세요"
             />
           </tr>
         </tbody>

@@ -1,172 +1,406 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AppConfig, Evaluation, Master, Summary } from '../types'
 import { seedMaster } from '../seed'
-import { addMyDocId, createStore, getMyDocIds, LocalStore, removeMyDocId, type Store, type StorageMode } from './storage'
-import { useAuth } from './auth'
+import { loadConfig, loadEvaluations, loadMaster, loadSummaries, lsGet, lsSet, saveEvaluations, saveMasterLocal, saveSummaries } from './storage'
+import { migrateEvaluation, migrateMaster, migrateSummary } from './migrate'
+import {
+  authErrorText,
+  changePassword as fbChangePassword,
+  createSchool,
+  deleteAccount as fbDeleteAccount,
+  fetchSchool,
+  hasFirebaseConfig,
+  normalizeSchoolId,
+  saveSchoolData,
+  sendReset as fbSendReset,
+  signIn as fbSignIn,
+  signOutAccount,
+  signUp as fbSignUp,
+  subscribeSchool,
+  watchAccount,
+  type AccountUser,
+  type SchoolDoc,
+} from './school'
+
+const SCHOOL_ID_KEY = 'choice.schoolId'
+
+/** off = Firebase 설정 없음, none = 아직 학교 아이디를 넣지 않음, ok = 연결됨, missing = 그런 아이디 없음 */
+export type SchoolStatus = 'off' | 'none' | 'loading' | 'ok' | 'missing' | 'error'
 
 export interface AppData {
   ready: boolean
-  error: string | null
-  mode: StorageMode
   config: AppConfig
   master: Master
   evaluations: Evaluation[]
   summaries: Summary[]
+
+  /** 학교 공유(과목·출판사) 상태 */
+  schoolStatus: SchoolStatus
+  schoolId: string | null
+  school: SchoolDoc | null
+  schoolError: string | null
+  /** Firebase 설정이 있어 학교 계정 기능을 쓸 수 있는지 */
+  accountEnabled: boolean
+  user: AccountUser | null
+  /** 지금 연결된 학교의 담당자 계정으로 로그인했는지 */
+  isOwner: boolean
+  busy: boolean
+  authError: string | null
+
+  attachSchool: (id: string) => Promise<boolean>
+  detachSchool: () => void
+  signUp: (v: { email: string; password: string; schoolId: string; schoolName: string }) => Promise<boolean>
+  signIn: (email: string, password: string) => Promise<boolean>
+  signOut: () => Promise<void>
+  sendReset: (email: string) => Promise<boolean>
+  changePassword: (current: string, next: string) => Promise<boolean>
+  deleteAccount: (current: string) => Promise<boolean>
+  clearAuthError: () => void
+
   saveMaster: (m: Master) => Promise<void>
   saveEvaluation: (e: Evaluation) => Promise<void>
   deleteEvaluation: (id: string) => Promise<void>
   saveSummary: (s: Summary) => Promise<void>
   deleteSummary: (id: string) => Promise<void>
-  refresh: () => Promise<void>
   resetMaster: () => Promise<void>
 }
 
 const Ctx = createContext<AppData | null>(null)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { ready: authReady, enabled: authEnabled, isApproved, config } = useAuth()
-  // 승인된 사용자만 전체 목록을 읽을 수 있다. 그 외에는 이 브라우저에서 만든 문서만 읽는다.
-  const fullAccess = !authEnabled || isApproved
-  const storeRef = useRef<Store | null>(null)
   const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<StorageMode>('local')
+  const [config, setConfig] = useState<AppConfig>({})
   const [master, setMaster] = useState<Master>(() => seedMaster())
   const [evaluations, setEvaluations] = useState<Evaluation[]>([])
   const [summaries, setSummaries] = useState<Summary[]>([])
+  const [schoolId, setSchoolId] = useState<string | null>(() => lsGet<string | null>(SCHOOL_ID_KEY, null))
+  const [school, setSchool] = useState<SchoolDoc | null>(null)
+  const [schoolStatus, setSchoolStatus] = useState<SchoolStatus>('off')
+  const [schoolError, setSchoolError] = useState<string | null>(null)
+  const [user, setUser] = useState<AccountUser | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const configRef = useRef<AppConfig>({})
+  const masterRef = useRef<Master>(master)
+  masterRef.current = master
 
-  const loadAll = useCallback(async (store: Store, cfg: AppConfig, full: boolean) => {
-    let m = await store.getMaster()
-    if (!m) {
-      m = seedMaster({ schoolName: cfg.schoolName, year: cfg.year })
-      // 마스터 생성 권한이 없는 일반 교사일 수 있으므로 저장 실패는 넘어간다
-      try {
-        await store.saveMaster(m)
-      } catch {
-        /* 관리자가 최초 1회 생성 */
-      }
-    }
-    const evs = await store.listEvaluations(full ? undefined : getMyDocIds())
-    const sums = full ? await store.listSummaries() : []
-    setMaster(m)
-    setEvaluations(evs)
-    setSummaries(sums)
+  /** 학교 문서의 과목·출판사를 화면이 쓰는 마스터에 반영하고 로컬에도 캐시한다 */
+  const applySchool = useCallback((doc: SchoolDoc) => {
+    const next: Master = { ...masterRef.current, subjects: doc.subjects || [], publishers: doc.publishers || [], settings: { ...masterRef.current.settings, schoolName: doc.schoolName || masterRef.current.settings.schoolName } }
+    masterRef.current = next
+    setMaster(next)
+    saveMasterLocal(next)
+    setSchool(doc)
   }, [])
 
+  // 최초 1회: 설정·로컬 데이터 로드 → 학교 아이디가 있으면 공유 과목·출판사 가져오기
   useEffect(() => {
-    // 로그인 방식일 때는 승인된 뒤에 데이터를 읽는다
-    if (!authReady) return
     let cancelled = false
+    let unsubAuth: (() => void) | undefined
+    ;(async () => {
+      const cfg = await loadConfig()
+      if (cancelled) return
+      configRef.current = cfg
+      setConfig(cfg)
+
+      const rawMaster = loadMaster()
+      const m = rawMaster ? migrateMaster(rawMaster) : seedMaster({ schoolName: cfg.schoolName, year: cfg.year })
+      if (!rawMaster) saveMasterLocal(m)
+      masterRef.current = m
+      setMaster(m)
+      setEvaluations(loadEvaluations().map((e) => migrateEvaluation(e, m)).filter((e): e is Evaluation => !!e))
+      setSummaries(loadSummaries().map(migrateSummary).filter((s): s is Summary => !!s))
+
+      if (hasFirebaseConfig(cfg.firebase)) {
+        unsubAuth = await watchAccount(cfg.firebase, (u) => !cancelled && setUser(u))
+        setSchoolStatus(schoolId ? 'loading' : 'none')
+      } else {
+        setSchoolStatus('off')
+      }
+      if (!cancelled) setReady(true)
+    })()
+    return () => {
+      cancelled = true
+      unsubAuth?.()
+    }
+    // 최초 1회만 실행한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 학교 아이디가 정해지면 문서를 읽고 변경을 구독한다
+  useEffect(() => {
+    const cfg = configRef.current
+    if (!ready || !hasFirebaseConfig(cfg.firebase)) return
+    if (!schoolId) {
+      setSchool(null)
+      setSchoolStatus('none')
+      return
+    }
+    let cancelled = false
+    let unsub: (() => void) | undefined
+    setSchoolStatus('loading')
     ;(async () => {
       try {
-        let store = await createStore(config)
-        if (cancelled) return
-        try {
-          await loadAll(store, config, fullAccess)
-          setError(null)
-        } catch (e) {
-          if (store.mode === 'local') throw e
-          // 온라인 저장소 접근 실패(예: 규칙 미허용) → 데이터 유실 없이 로컬 모드로 전환
-          store = new LocalStore()
-          await loadAll(store, config, fullAccess)
-          setError(
-            `온라인 저장소에 연결하지 못해 이 브라우저에만 저장합니다. 작성과 인쇄는 그대로 되지만 담당 교사에게 전달되지 않으니 관리자에게 알려 주세요. (Firebase 콘솔에서 익명 로그인 사용 설정과 Firestore 규칙 게시가 필요합니다. ${(e as Error).message})`,
-          )
-        }
-        if (cancelled) return
-        storeRef.current = store
-        setMode(store.mode)
+        unsub = await subscribeSchool(
+          cfg.firebase!,
+          schoolId,
+          (doc) => {
+            if (cancelled) return
+            if (doc) {
+              applySchool(doc)
+              setSchoolStatus('ok')
+              setSchoolError(null)
+            } else {
+              setSchool(null)
+              setSchoolStatus('missing')
+            }
+          },
+          (e) => {
+            if (cancelled) return
+            setSchoolStatus('error')
+            setSchoolError(authErrorText(e))
+          },
+        )
       } catch (e) {
-        setError(`데이터 불러오기 실패: ${(e as Error).message}`)
-      } finally {
-        if (!cancelled) setReady(true)
+        if (cancelled) return
+        setSchoolStatus('error')
+        setSchoolError(authErrorText(e))
       }
     })()
     return () => {
       cancelled = true
+      unsub?.()
     }
-  }, [authReady, config, fullAccess, loadAll])
+  }, [ready, schoolId, applySchool])
 
-  const refresh = useCallback(async () => {
-    const store = storeRef.current
-    if (!store) return
+  const isOwner = !!(user && school && school.ownerUid === user.uid)
+  const accountEnabled = hasFirebaseConfig(config.firebase)
+
+  const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    setBusy(true)
+    setAuthError(null)
     try {
-      await loadAll(store, config, fullAccess)
-      setError(null)
+      return await fn()
     } catch (e) {
-      setError(`새로고침 실패: ${(e as Error).message}`)
+      setAuthError(authErrorText(e))
+      return null
+    } finally {
+      setBusy(false)
     }
-  }, [loadAll, config, fullAccess])
-
-  const saveMaster = useCallback(async (m: Master) => {
-    const next = { ...m, updatedAt: new Date().toISOString() }
-    setMaster(next)
-    await storeRef.current?.saveMaster(next)
   }, [])
+
+  const attachSchool = useCallback(
+    async (raw: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const id = normalizeSchoolId(raw)
+      const ok = await run(async () => {
+        const doc = await fetchSchool(cfg.firebase!, id)
+        if (!doc) throw new Error(`'${id}' 학교 아이디를 찾을 수 없습니다. 담당 선생님께 확인해 주세요.`)
+        return doc
+      })
+      if (!ok) return false
+      lsSet(SCHOOL_ID_KEY, id)
+      setSchoolId(id)
+      applySchool(ok)
+      setSchoolStatus('ok')
+      return true
+    },
+    [run, applySchool],
+  )
+
+  const detachSchool = useCallback(() => {
+    lsSet(SCHOOL_ID_KEY, null)
+    setSchoolId(null)
+    setSchool(null)
+    setSchoolStatus(hasFirebaseConfig(configRef.current.firebase) ? 'none' : 'off')
+  }, [])
+
+  const signUp = useCallback(
+    async ({ email, password, schoolId: rawId, schoolName }: { email: string; password: string; schoolId: string; schoolName: string }): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const id = normalizeSchoolId(rawId)
+      const res = await run(async () => {
+        const exists = await fetchSchool(cfg.firebase!, id)
+        if (exists) throw new Error(`'${id}' 는 이미 사용 중인 학교 아이디입니다. 다른 아이디를 정해 주세요.`)
+        const u = await fbSignUp(cfg.firebase!, email, password)
+        const now = new Date().toISOString()
+        const doc: SchoolDoc = {
+          schoolId: id,
+          schoolName: schoolName.trim() || masterRef.current.settings.schoolName,
+          ownerUid: u.uid,
+          subjects: masterRef.current.subjects,
+          publishers: masterRef.current.publishers,
+          createdAt: now,
+          updatedAt: now,
+        }
+        await createSchool(cfg.firebase!, doc)
+        return doc
+      })
+      if (!res) return false
+      lsSet(SCHOOL_ID_KEY, id)
+      setSchoolId(id)
+      applySchool(res)
+      setSchoolStatus('ok')
+      return true
+    },
+    [run, applySchool],
+  )
+
+  const signIn = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const u = await run(() => fbSignIn(cfg.firebase!, email, password))
+      return !!u
+    },
+    [run],
+  )
+
+  const signOut = useCallback(async () => {
+    const cfg = configRef.current
+    if (!hasFirebaseConfig(cfg.firebase)) return
+    await run(() => signOutAccount(cfg.firebase!))
+    setUser(null)
+  }, [run])
+
+  const sendReset = useCallback(
+    async (email: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const r = await run(async () => {
+        await fbSendReset(cfg.firebase!, email)
+        return true
+      })
+      return !!r
+    },
+    [run],
+  )
+
+  const changePassword = useCallback(
+    async (current: string, next: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const r = await run(async () => {
+        await fbChangePassword(cfg.firebase!, current, next)
+        return true
+      })
+      return !!r
+    },
+    [run],
+  )
+
+  const deleteAccount = useCallback(
+    async (current: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase)) return false
+      const owned = school && user && school.ownerUid === user.uid ? school.schoolId : null
+      const r = await run(async () => {
+        await fbDeleteAccount(cfg.firebase!, current, owned)
+        return true
+      })
+      if (!r) return false
+      lsSet(SCHOOL_ID_KEY, null)
+      setSchoolId(null)
+      setSchool(null)
+      setUser(null)
+      setSchoolStatus('none')
+      return true
+    },
+    [run, school, user],
+  )
+
+  const clearAuthError = useCallback(() => setAuthError(null), [])
+
+  const saveMaster = useCallback(
+    async (m: Master) => {
+      const next = { ...m, updatedAt: new Date().toISOString() }
+      masterRef.current = next
+      setMaster(next)
+      saveMasterLocal(next)
+      const cfg = configRef.current
+      // 과목·출판사는 담당자 계정으로 로그인했을 때만 학교 문서에 함께 저장된다
+      if (hasFirebaseConfig(cfg.firebase) && schoolId && user && school && school.ownerUid === user.uid) {
+        await saveSchoolData(cfg.firebase, schoolId, { schoolName: next.settings.schoolName, subjects: next.subjects, publishers: next.publishers })
+      }
+    },
+    [schoolId, user, school],
+  )
 
   const saveEvaluation = useCallback(async (e: Evaluation) => {
     const next = { ...e, updatedAt: new Date().toISOString() }
     setEvaluations((list) => {
       const i = list.findIndex((x) => x.id === next.id)
-      if (i >= 0) {
-        const copy = [...list]
-        copy[i] = next
-        return copy
-      }
-      return [...list, next]
+      const copy = i >= 0 ? list.map((x, j) => (j === i ? next : x)) : [...list, next]
+      saveEvaluations(copy)
+      return copy
     })
-    await storeRef.current?.saveEvaluation(next)
-    addMyDocId(next.id)
   }, [])
 
   const deleteEvaluation = useCallback(async (id: string) => {
-    setEvaluations((list) => list.filter((x) => x.id !== id))
-    await storeRef.current?.deleteEvaluation(id)
-    removeMyDocId(id)
+    setEvaluations((list) => {
+      const copy = list.filter((x) => x.id !== id)
+      saveEvaluations(copy)
+      return copy
+    })
   }, [])
 
   const saveSummary = useCallback(async (s: Summary) => {
     const next = { ...s, updatedAt: new Date().toISOString() }
     setSummaries((list) => {
       const i = list.findIndex((x) => x.id === next.id)
-      if (i >= 0) {
-        const copy = [...list]
-        copy[i] = next
-        return copy
-      }
-      return [...list, next]
+      const copy = i >= 0 ? list.map((x, j) => (j === i ? next : x)) : [...list, next]
+      saveSummaries(copy)
+      return copy
     })
-    await storeRef.current?.saveSummary(next)
   }, [])
 
   const deleteSummary = useCallback(async (id: string) => {
-    setSummaries((list) => list.filter((x) => x.id !== id))
-    await storeRef.current?.deleteSummary(id)
+    setSummaries((list) => {
+      const copy = list.filter((x) => x.id !== id)
+      saveSummaries(copy)
+      return copy
+    })
   }, [])
 
   const resetMaster = useCallback(async () => {
-    const m = seedMaster({ schoolName: config.schoolName, year: config.year })
-    await saveMaster(m)
-  }, [config, saveMaster])
+    await saveMaster(seedMaster({ schoolName: configRef.current.schoolName, year: configRef.current.year }))
+  }, [saveMaster])
 
   const value = useMemo<AppData>(
     () => ({
       ready,
-      error,
-      mode,
       config,
       master,
       evaluations,
       summaries,
+      schoolStatus,
+      schoolId,
+      school,
+      schoolError,
+      accountEnabled,
+      user,
+      isOwner,
+      busy,
+      authError,
+      attachSchool,
+      detachSchool,
+      signUp,
+      signIn,
+      signOut,
+      sendReset,
+      changePassword,
+      deleteAccount,
+      clearAuthError,
       saveMaster,
       saveEvaluation,
       deleteEvaluation,
       saveSummary,
       deleteSummary,
-      refresh,
       resetMaster,
     }),
-    [ready, error, mode, config, master, evaluations, summaries, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, refresh, resetMaster],
+    [ready, config, master, evaluations, summaries, schoolStatus, schoolId, school, schoolError, accountEnabled, user, isOwner, busy, authError, attachSchool, detachSchool, signUp, signIn, signOut, sendReset, changePassword, deleteAccount, clearAuthError, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, resetMaster],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
@@ -176,26 +410,6 @@ export function useAppData(): AppData {
   const v = useContext(Ctx)
   if (!v) throw new Error('AppDataProvider missing')
   return v
-}
-
-// ───────────── 역할 잠금 (코드 방식, 로컬 모드 전용) ─────────────
-export type Role = 'teacher' | 'compiler' | 'admin'
-const ROLE_KEY = 'choice.roles'
-
-export function getUnlockedRoles(): Role[] {
-  try {
-    return JSON.parse(sessionStorage.getItem(ROLE_KEY) || '[]') as Role[]
-  } catch {
-    return []
-  }
-}
-export function unlockRole(r: Role): void {
-  const set = new Set(getUnlockedRoles())
-  set.add(r)
-  sessionStorage.setItem(ROLE_KEY, JSON.stringify([...set]))
-}
-export function lockAll(): void {
-  sessionStorage.removeItem(ROLE_KEY)
 }
 
 // ───────────── 해시 라우터 ─────────────
