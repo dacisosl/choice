@@ -83,6 +83,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const configRef = useRef<AppConfig>({})
   const masterRef = useRef<Master>(master)
   masterRef.current = master
+  // 공유 저장은 타이핑마다 쓰지 않고 잠시 모아서 한 번에 보낸다 (무료 한도 절약)
+  const remoteTimer = useRef<number | null>(null)
+  const pendingRemote = useRef<Master | null>(null)
+  const ownerRef = useRef<{ schoolId: string | null; canWrite: boolean }>({ schoolId: null, canWrite: false })
 
   /** 학교 문서의 과목·출판사를 화면이 쓰는 마스터에 반영하고 로컬에도 캐시한다 */
   const applySchool = useCallback((doc: SchoolDoc) => {
@@ -175,6 +179,34 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const isOwner = !!(user && school && school.ownerUid === user.uid)
   const accountEnabled = hasFirebaseConfig(config.firebase)
+  ownerRef.current = { schoolId, canWrite: isOwner }
+
+  /** 모아 둔 과목·출판사 변경을 학교 문서에 보낸다 */
+  const flushRemote = useCallback(async () => {
+    const cfg = configRef.current
+    const m = pendingRemote.current
+    const { schoolId: id, canWrite } = ownerRef.current
+    pendingRemote.current = null
+    if (!m || !id || !canWrite || !hasFirebaseConfig(cfg.firebase)) return
+    try {
+      await saveSchoolData(cfg.firebase, id, { schoolName: m.settings.schoolName, subjects: m.subjects, publishers: m.publishers })
+    } catch (e) {
+      setAuthError(authErrorText(e))
+    }
+  }, [])
+
+  // 화면을 떠날 때 남은 변경을 마저 보낸다
+  useEffect(() => {
+    const onLeave = () => {
+      if (remoteTimer.current) window.clearTimeout(remoteTimer.current)
+      flushRemote()
+    }
+    window.addEventListener('beforeunload', onLeave)
+    return () => {
+      window.removeEventListener('beforeunload', onLeave)
+      onLeave()
+    }
+  }, [flushRemote])
 
   const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     setBusy(true)
@@ -319,13 +351,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       masterRef.current = next
       setMaster(next)
       saveMasterLocal(next)
-      const cfg = configRef.current
-      // 과목·출판사는 담당자 계정으로 로그인했을 때만 학교 문서에 함께 저장된다
-      if (hasFirebaseConfig(cfg.firebase) && schoolId && user && school && school.ownerUid === user.uid) {
-        await saveSchoolData(cfg.firebase, schoolId, { schoolName: next.settings.schoolName, subjects: next.subjects, publishers: next.publishers })
-      }
+      // 과목·출판사는 담당자 계정으로 로그인했을 때만 학교 문서에 함께 저장된다.
+      // 글자를 칠 때마다 보내지 않도록 2초 모았다가 한 번만 쓴다.
+      const { schoolId: id, canWrite } = ownerRef.current
+      if (!id || !canWrite || !hasFirebaseConfig(configRef.current.firebase)) return
+      pendingRemote.current = next
+      if (remoteTimer.current) window.clearTimeout(remoteTimer.current)
+      remoteTimer.current = window.setTimeout(flushRemote, 2000)
     },
-    [schoolId, user, school],
+    [flushRemote],
   )
 
   const saveEvaluation = useCallback(async (e: Evaluation) => {

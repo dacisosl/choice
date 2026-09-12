@@ -1,6 +1,5 @@
 import { AppDataProvider, useAppData, useHashRoute } from './store/useAppData'
 import { Start } from './pages/Start'
-import { Guide } from './pages/Guide'
 import { Personal } from './pages/Personal'
 import { Compile } from './pages/Compile'
 import { Settings } from './pages/Settings'
@@ -44,16 +43,12 @@ function Shell() {
             </button>
           )}
           {isOwner && <span className="badge info">담당자</span>}
-          <button className={`btn sm ghost ${route === 'guide' ? 'active' : ''}`} onClick={() => go('guide')}>
-            이용 안내
-          </button>
           <button className={`btn sm ghost ${route === 'settings' ? 'active' : ''}`} onClick={() => go('settings')}>
             설정
           </button>
         </div>
       </header>
       {route === '' && <Start go={go} />}
-      {route === 'guide' && <Guide go={go} />}
       {route === 'personal' && <Personal />}
       {route === 'compile' && <Compile />}
       {(route === 'settings' || route === 'admin') && <Settings go={go} />}
