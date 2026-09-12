@@ -152,8 +152,9 @@ input[type='checkbox'] { accent-color: var(--primary); }
   grid-template-columns: 1.02fr 0.98fr;
   column-gap: 28px;
   align-items: stretch;
-  margin: 0 -20px -18px;
-  padding: 0 20px;
+  /* 사진이 화면 폭을 채우도록 통째로 풀고, 글·버튼만 가운데 1240px 안에 둔다 */
+  margin: 0 calc(50% - 50vw) -18px;
+  padding: 0 max(20px, calc(50vw - 620px));
   /* 사진(가로:세로 = 1586:515)이 화면 폭을 꽉 채우고, 그 위에 제목이 앉을 자리만 더한다.
      112px = 상단바 62 + 여백 10 + 본문 아래 40 */
   height: min(calc(100vw * 0.3247 + 122px), calc(100vh - 90px));
@@ -188,7 +189,8 @@ input[type='checkbox'] { accent-color: var(--primary); }
 }
 .hero-left .lead { word-break: keep-all; color: var(--text-2); font-size: clamp(12.5px, 1.15vw, 15px); line-height: 1.5; margin: 0; max-width: 21em; }
 
-.hero-right { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 0 18px; transform: translateX(clamp(0px, 4vw, 56px)); }
+/* 사진 속 교과서 표지(사진 폭의 66% 지점에서 끝난다)를 가리지 않도록 오른쪽 끝에 붙인다 */
+.hero-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; text-align: center; padding: 0 0 18px; }
 /* 세로로 긴 시작 카드: 안내 문구·제목·화살표가 한 필드 안에 들어간다 */
 .cta-tall {
   display: flex; flex-direction: column; align-items: center; justify-content: space-between;
@@ -424,7 +426,7 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .topbar nav .optional { display: none; }
   .hero-split { grid-template-columns: 1fr; height: auto; min-height: 0; padding-bottom: 18px; margin-bottom: 0; }
   .hero-left { justify-content: flex-start; padding-top: 10px; }
-  .hero-right { justify-content: flex-start; padding: 22px 0 0; transform: none; }
+  .hero-right { align-items: center; justify-content: flex-start; padding: 22px 0 0; }
   .hero-photo { position: relative; left: auto; right: auto; bottom: auto; order: 3; margin: 18px -20px 0; }
   .steps3 { grid-template-columns: 1fr; gap: 14px; }
   .steps3 .s { border-left: none; padding-left: 8px; }
