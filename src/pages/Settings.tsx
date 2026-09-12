@@ -4,7 +4,7 @@ import { DEFAULT_CRITERIA, seedSubjects, uid } from '../seed'
 import { useAppData } from '../store/useAppData'
 import { publishersFor } from '../lib/scoring'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
-import { schoolIdError } from '../store/school'
+import { normalizeSchoolId, schoolIdError } from '../store/school'
 
 const TABS = ['담당자 로그인', '선정 과목 관리', '과목별 출판사 관리', '평가기준']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
@@ -577,6 +577,7 @@ function AccountTab({ go }: { go: (h: string) => void }) {
     attachSchool,
     detachSchool,
     signUp,
+    changeSchoolId,
     signIn,
     signOut,
     sendReset,
@@ -596,6 +597,8 @@ function AccountTab({ go }: { go: (h: string) => void }) {
   const [curPw, setCurPw] = useState('')
   const [nextPw, setNextPw] = useState('')
   const [delPw, setDelPw] = useState('')
+  const [renameId, setRenameId] = useState('')
+  const [renameMsg, setRenameMsg] = useState<Msg>(null)
   const [msg, setMsg] = useState<Msg>(null)
 
   if (!accountEnabled)
@@ -612,6 +615,21 @@ function AccountTab({ go }: { go: (h: string) => void }) {
   const openOperator = (e: { preventDefault: () => void }) => {
     e.preventDefault()
     go('root')
+  }
+
+  /** 학교 아이디 옮기기. 과목·출판사는 그대로 따라가고, 교사들은 새 아이디를 다시 넣어야 한다 */
+  const doRename = async () => {
+    setRenameMsg(null)
+    const err = schoolIdError(renameId)
+    if (err) return setRenameMsg({ type: 'warn', text: err })
+    const next = normalizeSchoolId(renameId)
+    const cur = school?.schoolId || ''
+    if (!window.confirm(`학교 아이디를 '${cur}' 에서 '${next}' 로 바꿉니다.\n\n과목·출판사는 그대로 옮겨지지만, 이미 '${cur}' 를 넣어 둔 선생님들은 새 아이디를 다시 입력해야 합니다. 계속할까요?`)) return
+    const ok = await changeSchoolId(renameId)
+    if (ok) {
+      setRenameId('')
+      setRenameMsg({ type: 'ok', text: `학교 아이디를 '${next}' 로 바꿨습니다. 선생님들께 새 아이디를 알려 주세요.` })
+    }
   }
 
   const doSignUp = async () => {
@@ -642,6 +660,28 @@ function AccountTab({ go }: { go: (h: string) => void }) {
                 연결 끊기
               </button>
             </div>
+
+            {isOwner && (
+              <>
+                <h3 style={{ marginTop: 18 }}>학교 아이디 바꾸기</h3>
+                <p className="muted small">
+                  과목·출판사는 그대로 옮겨집니다. 다만 <b>이미 옛 아이디를 넣어 둔 선생님들은 새 아이디를 다시 입력해야 합니다.</b>
+                </p>
+                {renameMsg && <div className={`alert ${renameMsg.type}`}>{renameMsg.text}</div>}
+                <div className="row">
+                  <input
+                    type="text"
+                    value={renameId}
+                    placeholder="새 학교 아이디 (예: haemil-2027-a7)"
+                    onChange={(e) => setRenameId(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && doRename()}
+                  />
+                  <button className="btn" style={{ flex: '0 0 auto' }} disabled={busy || !renameId.trim()} onClick={doRename}>
+                    {busy ? '바꾸는 중…' : '아이디 바꾸기'}
+                  </button>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <>

@@ -11,7 +11,9 @@ import {
   fetchSchool,
   hasFirebaseConfig,
   normalizeSchoolId,
+  renameSchool,
   saveSchoolData,
+  schoolIdError,
   sendReset as fbSendReset,
   isSuperAdmin as isSuperAdminEmail,
   signIn as fbSignIn,
@@ -52,6 +54,8 @@ export interface AppData {
   attachSchool: (id: string) => Promise<boolean>
   detachSchool: () => void
   signUp: (v: { email: string; password: string; schoolId: string; schoolName: string }) => Promise<boolean>
+  /** 담당자가 학교 아이디를 다른 값으로 옮긴다 (교사들은 새 아이디를 다시 입력해야 한다) */
+  changeSchoolId: (id: string) => Promise<boolean>
   /** 운영자(최종 관리자) 구글 로그인 */
   signInGoogle: () => Promise<boolean>
   isSuperAdmin: boolean
@@ -287,6 +291,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [run, applySchool],
   )
 
+  const changeSchoolId = useCallback(
+    async (raw: string): Promise<boolean> => {
+      const cfg = configRef.current
+      if (!hasFirebaseConfig(cfg.firebase) || !school || !user || school.ownerUid !== user.uid) return false
+      const oldId = school.schoolId
+      const next = normalizeSchoolId(raw)
+      const res = await run(async () => {
+        const err = schoolIdError(raw)
+        if (err) throw new Error(err)
+        if (next === oldId) throw new Error('지금 쓰고 있는 아이디와 같습니다.')
+        const taken = await fetchSchool(cfg.firebase!, next)
+        if (taken) throw new Error(`'${next}' 는 이미 사용 중인 학교 아이디입니다. 다른 아이디를 정해 주세요.`)
+        // 아직 보내지 않은 과목·출판사 변경이 옛 아이디로 가지 않도록 여기서 함께 옮긴다
+        if (remoteTimer.current) window.clearTimeout(remoteTimer.current)
+        const base = pendingRemote.current || masterRef.current
+        pendingRemote.current = null
+        const doc: SchoolDoc = {
+          ...school,
+          schoolId: next,
+          schoolName: base.settings.schoolName || school.schoolName,
+          subjects: base.subjects,
+          publishers: base.publishers,
+          updatedAt: new Date().toISOString(),
+        }
+        await renameSchool(cfg.firebase!, oldId, doc, user.email)
+        return doc
+      })
+      if (!res) return false
+      lsSet(SCHOOL_ID_KEY, next)
+      setSchoolId(next)
+      applySchool(res)
+      setSchoolStatus('ok')
+      return true
+    },
+    [run, applySchool, school, user],
+  )
+
   const signIn = useCallback(
     async (email: string, password: string): Promise<boolean> => {
       const cfg = configRef.current
@@ -439,6 +480,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       attachSchool,
       detachSchool,
       signUp,
+      changeSchoolId,
       signIn,
       signOut,
       signInGoogle,
@@ -453,7 +495,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteSummary,
       resetMaster,
     }),
-    [ready, config, master, evaluations, summaries, schoolStatus, schoolId, school, schoolError, accountEnabled, user, isOwner, superAdmin, busy, authError, attachSchool, detachSchool, signUp, signIn, signOut, signInGoogle, sendReset, changePassword, deleteAccount, clearAuthError, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, resetMaster],
+    [ready, config, master, evaluations, summaries, schoolStatus, schoolId, school, schoolError, accountEnabled, user, isOwner, superAdmin, busy, authError, attachSchool, detachSchool, signUp, changeSchoolId, signIn, signOut, signInGoogle, sendReset, changePassword, deleteAccount, clearAuthError, saveMaster, saveEvaluation, deleteEvaluation, saveSummary, deleteSummary, resetMaster],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

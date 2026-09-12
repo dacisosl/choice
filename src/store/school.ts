@@ -130,6 +130,28 @@ export async function createSchool(cfg: FirebaseConfig, doc: SchoolDoc, ownerEma
   })
 }
 
+/**
+ * 학교 아이디 바꾸기. 새 아이디로 문서를 옮기고 옛 아이디를 지운다.
+ * 네 가지 쓰기를 한 묶음(batch)으로 보내 중간에 실패해도 반쯤 바뀐 상태가 남지 않는다.
+ * 이미 옛 아이디를 넣어 둔 선생님들은 각자 새 아이디를 다시 입력해야 한다.
+ */
+export async function renameSchool(cfg: FirebaseConfig, oldId: string, doc: SchoolDoc, ownerEmail: string): Promise<void> {
+  const { fs, db } = await getStore(cfg)
+  const batch = fs.writeBatch(db)
+  batch.set(fs.doc(db, SCHOOLS_COLLECTION, doc.schoolId), JSON.parse(JSON.stringify(doc)))
+  batch.set(fs.doc(db, SCHOOL_INDEX_COLLECTION, doc.schoolId), {
+    schoolId: doc.schoolId,
+    schoolName: doc.schoolName,
+    ownerUid: doc.ownerUid,
+    ownerEmail,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  })
+  batch.delete(fs.doc(db, SCHOOLS_COLLECTION, oldId))
+  batch.delete(fs.doc(db, SCHOOL_INDEX_COLLECTION, oldId))
+  await batch.commit()
+}
+
 export async function deleteSchool(cfg: FirebaseConfig, schoolId: string): Promise<void> {
   const { fs, db } = await getStore(cfg)
   await fs.deleteDoc(fs.doc(db, SCHOOLS_COLLECTION, schoolId))
