@@ -648,6 +648,7 @@ function AccountTab({ go }: { go: (h: string) => void }) {
     schoolError,
     user,
     isOwner,
+    isSuperAdmin,
     busy,
     authError,
     attachSchool,
@@ -683,6 +684,12 @@ function AccountTab({ go }: { go: (h: string) => void }) {
         </p>
       </div>
     )
+
+  /** 숨은 운영자 화면: 로그인 버튼을 오른쪽 클릭하면 열린다 */
+  const openOperator = (e: { preventDefault: () => void }) => {
+    e.preventDefault()
+    go('root')
+  }
 
   const doSignUp = async () => {
     setMsg(null)
@@ -745,9 +752,14 @@ function AccountTab({ go }: { go: (h: string) => void }) {
               <b>{user.email}</b> 로 로그인했습니다. {isOwner ? <span className="badge info">이 학교 담당자</span> : <span className="badge gray">다른 학교 담당자</span>}
             </p>
             <div className="actions">
-              <button className="btn" onClick={signOut} disabled={busy}>
+              <button className="btn" onClick={signOut} disabled={busy} onContextMenu={openOperator}>
                 로그아웃
               </button>
+              {isSuperAdmin && (
+                <button className="btn" onClick={() => go('root')}>
+                  운영자 화면
+                </button>
+              )}
             </div>
 
             <h3 style={{ marginTop: 18 }}>비밀번호 변경</h3>
@@ -795,7 +807,12 @@ function AccountTab({ go }: { go: (h: string) => void }) {
         ) : (
           <>
             <div className="actions" style={{ marginTop: 0 }}>
-              <button className={`btn sm ${mode === 'signIn' ? 'primary' : ''}`} onClick={() => setMode('signIn')}>
+              <button
+                className={`btn sm ${mode === 'signIn' ? 'primary' : ''}`}
+                onClick={() => setMode('signIn')}
+                onContextMenu={openOperator}
+                title="운영자는 이 버튼을 오른쪽 클릭하세요"
+              >
                 로그인
               </button>
               <button className={`btn sm ${mode === 'signUp' ? 'primary' : ''}`} onClick={() => setMode('signUp')}>
@@ -839,7 +856,13 @@ function AccountTab({ go }: { go: (h: string) => void }) {
             <div className="actions">
               {mode === 'signIn' ? (
                 <>
-                  <button className="btn primary" disabled={busy || !email || !password} onClick={() => signIn(email, password)}>
+                  <button
+                    className="btn primary"
+                    disabled={busy || !email || !password}
+                    onClick={() => signIn(email, password)}
+                    onContextMenu={openOperator}
+                    title="운영자는 이 버튼을 오른쪽 클릭하세요"
+                  >
                     {busy ? '처리 중…' : '로그인'}
                   </button>
                   <button
