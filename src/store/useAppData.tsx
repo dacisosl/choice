@@ -58,7 +58,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (cat) {
         const stamp = catalogStamp(cat)
         const seen = lsGet<string>(CATALOG_STAMP_KEY, '')
-        const noneYet = !m.subjects.some((s) => s.source === 'catalog')
+        // 자료에 과목이 있는데 이 컴퓨터에 하나도 없으면(지웠다가 다시 온 경우) 다시 채운다
+        const noneYet = cat.subjects.length > 0 && !m.subjects.some((s) => s.source === 'catalog')
         if (stamp !== seen || noneYet) {
           m = applyCatalog(m, cat)
           lsSet(CATALOG_STAMP_KEY, stamp)

@@ -84,7 +84,7 @@ function CatalogTab() {
     <div className="card">
       <h2>교과서 자료</h2>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
-      {catalog ? (
+      {catalog && subjects.length > 0 ? (
         <>
           <p>
             과목 <b>{subjects.length}개</b> · 출판사 <b>{pubs.length}개</b>
@@ -97,7 +97,7 @@ function CatalogTab() {
         </>
       ) : (
         <p className="muted small">
-          아직 교과서 자료가 없습니다(<code>public/catalog.json</code>). 자료가 없어도 과목명과 출판사를 직접 넣어 바로 작성할 수 있습니다.
+          아직 교과서 자료가 없습니다(<code>public/catalog.json</code>). 자료가 없어도 작성 화면에서 <b>과목명과 출판사를 직접 넣어</b> 바로 쓸 수 있습니다.
         </p>
       )}
       <div className="actions">
