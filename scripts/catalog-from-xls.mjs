@@ -190,7 +190,17 @@ const catalog = {
 writeFileSync(out, JSON.stringify(catalog, null, 2) + '\n', 'utf-8')
 
 const pubCount = new Set(subjects.flatMap((s) => s.publishers.map(pubName))).size
-const per = {}
-for (const s of subjects) per[`${s.school}${s.gradeGroup}`] = (per[`${s.school}${s.gradeGroup}`] || 0) + 1
 console.log(`\n${out} 저장: 과목 ${subjects.length}개${merge ? ` (새로 더한 과목 ${added}개)` : ''} · 발행사 ${pubCount}곳 · 읽은 행 ${rows.length}`)
-console.log('학교·학년군별 과목 수:', per)
+
+// 교과별로 몇 개나 들어왔는지 보여 준다. 내려받기가 잘려 빠진 교과를 바로 알 수 있다.
+for (const sch of ['중', '고']) {
+  const mine = subjects.filter((s) => s.school === sch)
+  if (!mine.length) continue
+  const byGroup = {}
+  for (const s of mine) byGroup[s.subjectGroup || '(교과없음)'] = (byGroup[s.subjectGroup || '(교과없음)'] || 0) + 1
+  const line = Object.entries(byGroup)
+    .sort((a, b) => b[1] - a[1])
+    .map(([g, n]) => `${g} ${n}`)
+    .join(', ')
+  console.log(`  ${sch === '중' ? '중학교' : '고등학교'} ${mine.length}과목 — ${line}`)
+}
