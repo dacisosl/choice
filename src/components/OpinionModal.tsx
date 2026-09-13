@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { OpinionOption, RecommendStrength, Settings } from '../types'
-import { aiGenerate, getApiKey, splitKeys } from '../lib/ai'
+import { aiGenerate, getApiKey, setApiKey, splitKeys } from '../lib/ai'
 import { OpinionPicker } from './OpinionPicker'
 
 const STRENGTHS: RecommendStrength[] = ['적극 추천', '추천', '대안으로 추천']
@@ -61,6 +61,10 @@ export function OpinionModal({
   const [msg, setMsg] = useState<string | null>(null)
   const [used, setUsed] = useState(0)
   const [showSources, setShowSources] = useState(false)
+  // AI 키는 이 컴퓨터에만 저장된다. 쓰이는 자리에서 바로 넣고 지울 수 있게 둔다
+  const [apiKey, setKeyState] = useState(() => getApiKey())
+  const [editKey, setEditKey] = useState(false)
+  const [keyDraft, setKeyDraft] = useState('')
   const areaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export function OpinionModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onCancel])
 
-  const hasKey = !!getApiKey()
+  const hasKey = !!apiKey
   const overLimit = aiCount + used >= settings.aiMaxPerDoc
 
   const generate = async () => {
@@ -105,7 +109,7 @@ export function OpinionModal({
       setMsg(
         hasKey
           ? `규칙 기반 문장으로 생성했습니다${res.error && res.error !== 'API 키 없음' ? ` (AI 오류: ${res.error})` : ''}.`
-          : '규칙 기반 문장으로 생성했습니다. 설정에서 AI 키를 넣으면 더 자연스러운 문장을 만들 수 있습니다.',
+          : '규칙 기반 문장으로 생성했습니다. 아래 [AI 키 넣기]에 OpenRouter 키를 넣으면 더 자연스러운 문장을 만들 수 있습니다.',
       )
     }
     window.setTimeout(() => {
@@ -163,9 +167,16 @@ export function OpinionModal({
               onChange={(e) => setText(e.target.value)}
             />
             <div className="modal-gen">
-              <span className="muted small">
-                {hasKey ? `AI ${settings.aiModel} · ${aiCount + used}/${settings.aiMaxPerDoc}회${overLimit ? ' (상한 도달)' : ''}` : 'AI 키 미설정 — 규칙 기반 문장'}
-              </span>
+              <button
+                className="linklike muted small"
+                onClick={() => {
+                  setKeyDraft('')
+                  setEditKey((v) => !v)
+                }}
+                title="AI 키는 이 컴퓨터에만 저장됩니다"
+              >
+                {hasKey ? `AI ${settings.aiModel} · ${aiCount + used}/${settings.aiMaxPerDoc}회${overLimit ? ' (상한 도달)' : ''}` : 'AI 키 넣기 — 지금은 규칙 기반 문장'}
+              </button>
               <select value={length} onChange={(e) => setLength(e.target.value as 'short' | 'long')}>
                 <option value="short">2~4문장</option>
                 <option value="long">4~6문장</option>
@@ -182,6 +193,53 @@ export function OpinionModal({
               </button>
             </div>
           </div>
+          {editKey && (
+            <div className="key-row">
+              <input
+                type="password"
+                value={keyDraft}
+                placeholder={hasKey ? '새 키를 넣으면 바꿉니다 (sk-or-…)' : 'OpenRouter 키 (sk-or-…)'}
+                onChange={(e) => setKeyDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' || !keyDraft.trim()) return
+                  setApiKey(keyDraft.trim())
+                  setKeyState(keyDraft.trim())
+                  setEditKey(false)
+                  setMsg('AI 키를 저장했습니다. 이제 [의견 생성]이 AI 문장을 만듭니다.')
+                }}
+              />
+              <button
+                className="btn"
+                disabled={!keyDraft.trim()}
+                onClick={() => {
+                  setApiKey(keyDraft.trim())
+                  setKeyState(keyDraft.trim())
+                  setEditKey(false)
+                  setMsg('AI 키를 저장했습니다. 이제 [의견 생성]이 AI 문장을 만듭니다.')
+                }}
+              >
+                저장
+              </button>
+              {hasKey && (
+                <button
+                  className="btn danger"
+                  onClick={() => {
+                    setApiKey('')
+                    setKeyState('')
+                    setEditKey(false)
+                    setMsg('AI 키를 지웠습니다. 규칙 기반 문장으로 생성합니다.')
+                  }}
+                >
+                  키 지우기
+                </button>
+              )}
+            </div>
+          )}
+          {editKey && (
+            <p className="muted small" style={{ marginTop: 6 }}>
+              키는 이 컴퓨터(브라우저)에만 저장되며 서버로 보내지 않습니다. 키가 없어도 규칙 기반 문장으로 초안이 만들어집니다.
+            </p>
+          )}
           {msg && <p className="muted small" style={{ marginTop: 6 }}>{msg}</p>}
         </div>
 
