@@ -1,23 +1,9 @@
 import type { OpinionOption, RecommendStrength, Tone } from '../types'
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-const KEY_STORAGE = 'choice.openrouterKey'
-
-export function getApiKey(): string {
-  try {
-    return localStorage.getItem(KEY_STORAGE) || ''
-  } catch {
-    return ''
-  }
-}
-export function setApiKey(k: string): void {
-  try {
-    if (k) localStorage.setItem(KEY_STORAGE, k)
-    else localStorage.removeItem(KEY_STORAGE)
-  } catch {
-    /* ignore */
-  }
-}
+/**
+ * 의견 문장 만들기. 고른 핵심의견을 규칙에 따라 문장으로 엮는다.
+ * 바깥 서비스를 부르지 않으므로 인터넷 없이도 그대로 동작한다.
+ */
 
 export interface GenInput {
   kind: 'summary' | 'recommend' | 'compile'
@@ -32,12 +18,6 @@ export interface GenInput {
   avoid?: string[]
   /** 총괄 종합용: 위원들의 개인 의견 */
   sources?: string[]
-}
-
-export interface GenResult {
-  text: string
-  source: 'ai' | 'template'
-  error?: string
 }
 
 // ───────────── 규칙 기반(오프라인) 문장 ─────────────
@@ -129,7 +109,8 @@ const OPENERS_SUMMARY = [
   (s: string, p: string) => `${p}의 ${s} 교과서는 전반적으로`,
 ]
 
-export function templateGenerate(input: GenInput): string {
+/** 고른 핵심의견으로 의견 문장을 만든다 */
+export function generateOpinion(input: GenInput): string {
   const seed = strHash(`${input.subject}|${input.publisher}|${input.rank}|${input.positives.join(',')}`)
   const pos = shuffle(input.positives, seed)
   const neg = input.negatives
@@ -188,82 +169,6 @@ export function templateGenerate(input: GenInput): string {
     sentences.push(conj(`종합적으로 ${input.rank}순위로 평가하`, t))
   }
   return sentences.join(' ')
-}
-
-// ───────────── OpenRouter 호출 ─────────────
-
-export async function aiGenerate(
-  input: GenInput,
-  model: string,
-  fallbackModel?: string,
-  signal?: AbortSignal,
-): Promise<GenResult> {
-  const key = getApiKey()
-  if (!key) return { text: templateGenerate(input), source: 'template', error: 'API 키 없음' }
-
-  const toneTxt = input.tone === 'formal' ? '개조식(~함/~됨으로 끝나는 문장)' : '서술식(~합니다로 끝나는 문장)'
-  const len = input.length === 'long' ? '4~6문장' : '2~4문장'
-  const system = `당신은 고등학교 교과협의회 교사입니다. 공문서(교과용도서 선정 의견서)에 쓰는 정중하고 객관적인 문체(${toneTxt})로 작성합니다. 출판사·교과서를 비방하지 않고, 제시된 핵심의견만 근거로 작성합니다. 없는 사실(쪽수, 단원명, 수치, 저자명)을 만들어내지 않습니다. 제목이나 머리말 없이 본문 문장만 출력합니다.`
-  const lines = [
-    `과목: ${input.subject}`,
-    input.publisher ? `출판사: ${input.publisher}` : '',
-    input.rank ? `순위: ${input.rank}순위` : '',
-    `핵심의견: ${input.positives.length ? input.positives.join(', ') : '없음'}`,
-    `아쉬운 점: ${input.negatives.length ? input.negatives.join(', ') : '없음'}`,
-    input.strength ? `추천 강도: ${input.strength}` : '',
-    `분량: ${len}`,
-    `문체: ${toneTxt}`,
-    input.kind === 'summary' ? '용도: 서식1 하단 <종합의견 및 추천의견> 칸' : '',
-    input.kind === 'recommend' ? '용도: 서식3 추천 의견서의 해당 순위 추천 의견' : '',
-    input.kind === 'compile'
-      ? `용도: 교과협의회 대표교사가 작성하는 공식 추천 의견서. 아래 위원들의 개인 의견을 종합하되 특정 위원 의견을 그대로 복사하지 말 것.\n위원 의견:\n${(input.sources || []).map((s, i) => `- 위원${i + 1}: ${s}`).join('\n')}`
-      : '',
-    input.avoid && input.avoid.length
-      ? `동일 문서 내 다른 출판사 의견과 표현이 겹치지 않게 다양하게 작성. 피해야 할 기존 문장:\n${input.avoid.map((a) => `- ${a}`).join('\n')}`
-      : '',
-  ].filter(Boolean)
-
-  const body = (m: string) => ({
-    model: m,
-    temperature: 0.85,
-    max_tokens: input.length === 'long' ? 600 : 350,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: lines.join('\n') },
-    ],
-  })
-
-  const tryModel = async (m: string): Promise<string> => {
-    const res = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      signal,
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': location.origin,
-        'X-Title': 'Textbook Selection Docs',
-      },
-      body: JSON.stringify(body(m)),
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const json = await res.json()
-    const text: string = json?.choices?.[0]?.message?.content ?? ''
-    if (!text.trim()) throw new Error('빈 응답')
-    return text.trim()
-  }
-
-  try {
-    return { text: await tryModel(model), source: 'ai' }
-  } catch (e1) {
-    if (fallbackModel && fallbackModel !== model) {
-      try {
-        return { text: await tryModel(fallbackModel), source: 'ai' }
-      } catch (e2) {
-        return { text: templateGenerate(input), source: 'template', error: String((e2 as Error).message) }
-      }
-    }
-    return { text: templateGenerate(input), source: 'template', error: String((e1 as Error).message) }
-  }
 }
 
 export function splitKeys(options: OpinionOption[], keys: string[]): { positives: string[]; negatives: string[] } {

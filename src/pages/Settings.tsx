@@ -4,12 +4,11 @@ import { DEFAULT_CRITERIA, seedSubjects, uid } from '../seed'
 import { useAppData } from '../store/useAppData'
 import { publishersFor } from '../lib/scoring'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
-import { normalizeSchoolId, schoolIdError } from '../store/school'
 
-const TABS = ['담당자 로그인', '선정 과목 관리', '과목별 출판사 관리', '평가기준']
+const TABS = ['교과서 자료', '선정 과목 관리', '과목별 출판사 관리', '평가기준']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 
-export function Settings({ go }: { go: (h: string) => void }) {
+export function Settings(_: { go: (h: string) => void }) {
   const [tab, setTab] = useState(0)
   return (
     <div>
@@ -20,7 +19,7 @@ export function Settings({ go }: { go: (h: string) => void }) {
           </button>
         ))}
       </div>
-      {tab === 0 && <AccountTab go={go} />}
+      {tab === 0 && <CatalogTab />}
       {tab === 1 && <SubjectsTab />}
       {tab === 2 && <PublishersTab />}
       {tab === 3 && <CriteriaTab />}
@@ -42,19 +41,73 @@ function useMasterEdit() {
   return { master, save, msg, setMsg }
 }
 
-/** 과목·출판사는 학교 담당자만 고칠 수 있다 (공유가 켜져 있을 때) */
+/** 목록은 이 컴퓨터에서 누구나 고칠 수 있다 */
 function useSharedEditable() {
-  const { schoolStatus, isOwner, accountEnabled } = useAppData()
-  const shared = schoolStatus === 'ok'
-  return { shared, canEdit: !shared || isOwner, accountEnabled, isOwner }
+  return { canEdit: true }
 }
 
+/** 교과서 자료에서 받아 온 항목이 섞여 있을 때의 안내 */
 function SharedNotice() {
-  const { shared, canEdit } = useSharedEditable()
-  if (!shared || canEdit) return null
+  const { master, catalog } = useAppData()
+  const fromCatalog = master.subjects.filter((s) => s.source === 'catalog').length
+  if (!catalog || !fromCatalog) return null
   return (
     <div className="alert info">
-      이 학교의 과목·출판사 목록입니다. 담당 선생님 계정으로 로그인해야 고칠 수 있습니다. (설정 › 학교 계정)
+      이 중 <b>{fromCatalog}개 과목</b>은 앱에 실려 온 교과서 자료에서 받아 왔습니다. 여기서 고치거나 지울 수 있지만, 자료가 갱신되면 그 항목은 새 자료로 다시 채워집니다.
+    </div>
+  )
+}
+
+/** 앱과 함께 배포된 교과서 자료 안내 */
+function CatalogTab() {
+  const { master, catalog, reloadCatalog } = useAppData()
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<Msg>(null)
+  const subjects = master.subjects.filter((s) => s.source === 'catalog')
+  const pubs = master.publishers.filter((p) => p.source === 'catalog')
+  const own = master.subjects.length - subjects.length
+
+  const reload = async () => {
+    setBusy(true)
+    setMsg(null)
+    try {
+      await reloadCatalog()
+      setMsg({ type: 'ok', text: '교과서 자료를 다시 불러왔습니다.' })
+    } catch (e) {
+      setMsg({ type: 'error', text: `불러오지 못했습니다: ${(e as Error).message}` })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h2>교과서 자료</h2>
+      {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
+      {catalog ? (
+        <>
+          <p>
+            과목 <b>{subjects.length}개</b> · 출판사 <b>{pubs.length}개</b>
+            {catalog.updatedAt ? <span className="muted small"> · 자료 갱신일 {catalog.updatedAt}</span> : null}
+          </p>
+          <p className="muted small">
+            과목을 고르면 그 과목의 출판사가 자동으로 채워집니다. 목록에 없는 과목·출판사는 작성 화면이나 아래 탭에서 직접 넣을 수 있습니다.
+            {own > 0 ? ` (직접 넣은 과목 ${own}개)` : ''}
+          </p>
+        </>
+      ) : (
+        <p className="muted small">
+          아직 교과서 자료가 없습니다(<code>public/catalog.json</code>). 자료가 없어도 과목명과 출판사를 직접 넣어 바로 작성할 수 있습니다.
+        </p>
+      )}
+      <div className="actions">
+        <button className="btn" onClick={reload} disabled={busy}>
+          {busy ? '불러오는 중…' : '자료 다시 불러오기'}
+        </button>
+      </div>
+      <p className="note">
+        자료는 앱과 함께 배포되는 <code>public/catalog.json</code> 파일입니다. 서버도 로그인도 쓰지 않으며, 작성한 평가표·총괄표는 이 컴퓨터에만 저장됩니다.
+      </p>
     </div>
   )
 }
@@ -562,303 +615,3 @@ function CriteriaTab() {
 }
 
 // ───────────── 학교 계정 ─────────────
-function AccountTab({ go }: { go: (h: string) => void }) {
-  const {
-    accountEnabled,
-    schoolStatus,
-    schoolId,
-    school,
-    schoolError,
-    user,
-    isOwner,
-    isSuperAdmin,
-    busy,
-    authError,
-    attachSchool,
-    detachSchool,
-    signUp,
-    changeSchoolId,
-    signIn,
-    signOut,
-    sendReset,
-    changePassword,
-    deleteAccount,
-    clearAuthError,
-    master,
-  } = useAppData()
-
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [newSchoolId, setNewSchoolId] = useState('')
-  const [newSchoolName, setNewSchoolName] = useState(master.settings.schoolName)
-  const [agree, setAgree] = useState(false)
-  const [joinId, setJoinId] = useState('')
-  const [curPw, setCurPw] = useState('')
-  const [nextPw, setNextPw] = useState('')
-  const [delPw, setDelPw] = useState('')
-  const [renameId, setRenameId] = useState('')
-  const [renameMsg, setRenameMsg] = useState<Msg>(null)
-  const [msg, setMsg] = useState<Msg>(null)
-
-  if (!accountEnabled)
-    return (
-      <div className="card">
-        <h2>학교 계정</h2>
-        <p className="muted small">
-          이 배포본에는 학교 계정 기능이 꺼져 있습니다(<code>public/config.json</code> 의 Firebase 설정 없음). 과목·출판사는 각 컴퓨터에서 직접 입력해 사용합니다.
-        </p>
-      </div>
-    )
-
-  /** 숨은 운영자 화면: 로그인 버튼을 오른쪽 클릭하면 열린다 */
-  const openOperator = (e: { preventDefault: () => void }) => {
-    e.preventDefault()
-    go('root')
-  }
-
-  /** 학교 아이디 옮기기. 과목·출판사는 그대로 따라가고, 교사들은 새 아이디를 다시 넣어야 한다 */
-  const doRename = async () => {
-    setRenameMsg(null)
-    const err = schoolIdError(renameId)
-    if (err) return setRenameMsg({ type: 'warn', text: err })
-    const next = normalizeSchoolId(renameId)
-    const cur = school?.schoolId || ''
-    if (!window.confirm(`학교 아이디를 '${cur}' 에서 '${next}' 로 바꿉니다.\n\n과목·출판사는 그대로 옮겨지지만, 이미 '${cur}' 를 넣어 둔 선생님들은 새 아이디를 다시 입력해야 합니다. 계속할까요?`)) return
-    const ok = await changeSchoolId(renameId)
-    if (ok) {
-      setRenameId('')
-      setRenameMsg({ type: 'ok', text: `학교 아이디를 '${next}' 로 바꿨습니다. 선생님들께 새 아이디를 알려 주세요.` })
-    }
-  }
-
-  const doSignUp = async () => {
-    setMsg(null)
-    if (!agree) return setMsg({ type: 'warn', text: '개인정보 처리방침에 동의해야 가입할 수 있습니다.' })
-    const err = schoolIdError(newSchoolId)
-    if (err) return setMsg({ type: 'warn', text: err })
-    if (!newSchoolName.trim()) return setMsg({ type: 'warn', text: '학교 이름을 입력하세요.' })
-    const ok = await signUp({ email, password, schoolId: newSchoolId, schoolName: newSchoolName })
-    if (ok) {
-      setPassword('')
-      setMsg({ type: 'ok', text: '가입되었습니다. 과목·출판사 탭에서 목록을 등록한 뒤, 선생님들께 학교 아이디를 알려 주세요.' })
-    }
-  }
-
-  return (
-    <div className="grid2">
-      <div className="card">
-        <h2>학교 자료 연결</h2>
-        {schoolStatus === 'ok' && school ? (
-          <>
-            <p>
-              <b>{school.schoolName}</b> <span className="muted small">({school.schoolId})</span> 의 과목·출판사를 쓰고 있습니다.
-            </p>
-            <p className="muted small">과목 {school.subjects.length}개 · 출판사 {school.publishers.length}개</p>
-            <div className="actions">
-              <button className="btn" onClick={detachSchool}>
-                연결 끊기
-              </button>
-            </div>
-
-            {isOwner && (
-              <>
-                <h3 style={{ marginTop: 18 }}>학교 아이디 바꾸기</h3>
-                <p className="muted small">
-                  과목·출판사는 그대로 옮겨집니다. 다만 <b>이미 옛 아이디를 넣어 둔 선생님들은 새 아이디를 다시 입력해야 합니다.</b>
-                </p>
-                {renameMsg && <div className={`alert ${renameMsg.type}`}>{renameMsg.text}</div>}
-                <div className="row">
-                  <input
-                    type="text"
-                    value={renameId}
-                    placeholder="새 학교 아이디 (예: haemil-2027-a7)"
-                    onChange={(e) => setRenameId(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && doRename()}
-                  />
-                  <button className="btn" style={{ flex: '0 0 auto' }} disabled={busy || !renameId.trim()} onClick={doRename}>
-                    {busy ? '바꾸는 중…' : '아이디 바꾸기'}
-                  </button>
-                </div>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <p className="muted small">담당 선생님께 받은 <b>학교 아이디</b>를 넣으면 그 학교의 과목·출판사가 채워집니다.</p>
-            {schoolStatus === 'missing' && <div className="alert warn">‘{schoolId}’ 학교 아이디를 찾지 못했습니다. 아이디를 다시 확인해 주세요.</div>}
-            {schoolStatus === 'error' && <div className="alert error">학교 자료를 불러오지 못했습니다. {schoolError}</div>}
-            <div className="row">
-              <input type="text" value={joinId} onChange={(e) => setJoinId(e.target.value)} placeholder="예: haemil-high" onKeyDown={(e) => e.key === 'Enter' && attachSchool(joinId)} />
-              <button className="btn primary" style={{ flex: '0 0 auto' }} disabled={busy} onClick={() => attachSchool(joinId)}>
-                {busy ? '확인 중…' : '연결'}
-              </button>
-            </div>
-          </>
-        )}
-        {authError && (
-          <div className="alert error" style={{ marginTop: 12 }}>
-            {authError}
-            <button className="btn sm ghost" style={{ marginLeft: 8 }} onClick={clearAuthError}>
-              닫기
-            </button>
-          </div>
-        )}
-      </div>
-
-      <div className="card">
-        <h2>담당 선생님 계정</h2>
-        {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
-        {user ? (
-          <>
-            <p>
-              <b>{user.email}</b> 로 로그인했습니다. {isOwner ? <span className="badge info">이 학교 담당자</span> : <span className="badge gray">다른 학교 담당자</span>}
-            </p>
-            <div className="actions">
-              <button className="btn" onClick={signOut} disabled={busy} onContextMenu={openOperator}>
-                로그아웃
-              </button>
-              {isSuperAdmin && (
-                <button className="btn" onClick={() => go('root')}>
-                  운영자 화면
-                </button>
-              )}
-            </div>
-
-            <h3 style={{ marginTop: 18 }}>비밀번호 변경</h3>
-            <div className="row">
-              <input type="password" placeholder="현재 비밀번호" value={curPw} onChange={(e) => setCurPw(e.target.value)} />
-              <input type="password" placeholder="새 비밀번호 (6자 이상)" value={nextPw} onChange={(e) => setNextPw(e.target.value)} />
-              <button
-                className="btn"
-                style={{ flex: '0 0 auto' }}
-                disabled={busy || !curPw || nextPw.length < 6}
-                onClick={async () => {
-                  const ok = await changePassword(curPw, nextPw)
-                  if (ok) {
-                    setCurPw('')
-                    setNextPw('')
-                    setMsg({ type: 'ok', text: '비밀번호를 바꿨습니다.' })
-                  }
-                }}
-              >
-                변경
-              </button>
-            </div>
-
-            <h3 style={{ marginTop: 18 }}>회원 탈퇴</h3>
-            <p className="muted small">
-              계정과 <b>이 학교의 과목·출판사 자료</b>가 함께 지워지며 되돌릴 수 없습니다. 선생님들이 쓰던 학교 아이디도 더는 쓸 수 없게 됩니다. 각 컴퓨터에 저장된 평가표·총괄표는 그대로 남습니다.
-            </p>
-            <div className="row">
-              <input type="password" placeholder="확인을 위해 비밀번호 입력" value={delPw} onChange={(e) => setDelPw(e.target.value)} />
-              <button
-                className="btn danger"
-                style={{ flex: '0 0 auto' }}
-                disabled={busy || !delPw}
-                onClick={async () => {
-                  if (!confirm('정말 탈퇴할까요? 계정과 학교 자료가 삭제되며 되돌릴 수 없습니다.')) return
-                  const ok = await deleteAccount(delPw)
-                  setDelPw('')
-                  if (ok) setMsg({ type: 'ok', text: '탈퇴가 완료되었습니다. 계정과 학교 자료를 삭제했습니다.' })
-                }}
-              >
-                탈퇴
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="actions" style={{ marginTop: 0 }}>
-              <button
-                className={`btn sm ${mode === 'signIn' ? 'primary' : ''}`}
-                onClick={() => setMode('signIn')}
-                onContextMenu={openOperator}
-                title="운영자는 이 버튼을 오른쪽 클릭하세요"
-              >
-                로그인
-              </button>
-              <button className={`btn sm ${mode === 'signUp' ? 'primary' : ''}`} onClick={() => setMode('signUp')}>
-                학교 등록(가입)
-              </button>
-            </div>
-            <p className="muted small">
-              학교마다 담당 선생님 계정 하나면 됩니다. 나머지 선생님은 가입 없이 <b>학교 아이디</b>만 넣어 쓰면 됩니다.
-            </p>
-            <label className="field">
-              이메일
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="teacher@school.kr" />
-            </label>
-            <label className="field" style={{ marginTop: 8 }}>
-              비밀번호
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="6자 이상" />
-            </label>
-
-            {mode === 'signUp' && (
-              <>
-                <label className="field" style={{ marginTop: 8 }}>
-                  학교 이름
-                  <input type="text" value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} placeholder="예: 해밀고등학교" />
-                </label>
-                <label className="field" style={{ marginTop: 8 }}>
-                  학교 아이디 (선생님들께 알려 줄 코드)
-                  <input type="text" value={newSchoolId} onChange={(e) => setNewSchoolId(e.target.value)} placeholder="예: haemil-high" />
-                </label>
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginTop: 12 }}>
-                  <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-                  <span className="small">
-                    <button className="linklike" onClick={() => go('privacy')}>
-                      개인정보 처리방침
-                    </button>
-                    을 읽고 이메일 수집·이용에 동의합니다. (필수)
-                  </span>
-                </label>
-              </>
-            )}
-
-            <div className="actions">
-              {mode === 'signIn' ? (
-                <>
-                  <button
-                    className="btn primary"
-                    disabled={busy || !email || !password}
-                    onClick={() => signIn(email, password)}
-                    onContextMenu={openOperator}
-                    title="운영자는 이 버튼을 오른쪽 클릭하세요"
-                  >
-                    {busy ? '처리 중…' : '로그인'}
-                  </button>
-                  <button
-                    className="btn"
-                    disabled={busy || !email}
-                    onClick={async () => {
-                      const ok = await sendReset(email)
-                      if (ok) setMsg({ type: 'ok', text: '비밀번호 재설정 메일을 보냈습니다.' })
-                    }}
-                  >
-                    비밀번호 재설정 메일
-                  </button>
-                </>
-              ) : (
-                <button className="btn primary" disabled={busy || !email || !password} onClick={doSignUp}>
-                  {busy ? '처리 중…' : '학교 등록하기'}
-                </button>
-              )}
-            </div>
-            <p className="note">
-              수집 항목은 담당 선생님 이메일과 학교 이름·아이디뿐입니다. 학생·교사의 평가 점수와 의견은 서버에 저장되지 않습니다.{' '}
-              <button className="linklike" onClick={() => go('privacy')}>
-                자세히
-              </button>
-            </p>
-          </>
-        )}
-        {authError && (
-          <div className="alert error" style={{ marginTop: 12 }}>
-            {authError}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}

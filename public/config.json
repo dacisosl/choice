@@ -1,18 +1,4 @@
 {
   "schoolName": "해밀고등학교",
-  "year": 2027,
-
-  "_firebase": "학교 계정(이메일·비밀번호)과 학교별 과목·출판사 공유에만 쓰입니다. 비워 두면 계정 기능이 꺼지고 과목·출판사를 각 컴퓨터에서 직접 입력합니다.",
-  "firebase": {
-    "apiKey": "AIzaSyBx37L145oA0O3Ls0hI1bd722FVMseRvfw",
-    "authDomain": "edit-help.firebaseapp.com",
-    "projectId": "edit-help",
-    "appId": "1:947655495615:web:bf4c40b0a0c7c090de5b0a",
-
-    "_databaseId": "Firestore 데이터베이스 ID. 비우면 (default).",
-    "databaseId": "choice",
-
-    "_superAdmins": "서비스 운영자(최종 관리자) 구글 계정. 숨은 주소 #/root 로 들어가 학교 아이디를 관리합니다. firebase/firestore.rules 의 isSuperAdmin() 목록과 같아야 합니다.",
-    "superAdmins": ["schoooolid@gmail.com"]
-  }
+  "year": 2027
 }

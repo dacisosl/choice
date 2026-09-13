@@ -3,8 +3,6 @@ import { Start } from './pages/Start'
 import { Personal } from './pages/Personal'
 import { Compile } from './pages/Compile'
 import { Settings } from './pages/Settings'
-import { Privacy } from './pages/Privacy'
-import { Root } from './pages/Root'
 
 const BookIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -14,7 +12,7 @@ const BookIcon = () => (
 )
 
 function Shell() {
-  const { ready, schoolStatus, schoolId, school, isOwner, user, signOut } = useAppData()
+  const { ready } = useAppData()
   const [route, go] = useHashRoute()
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   return (
@@ -26,50 +24,15 @@ function Shell() {
         </div>
         <div id="topbar-slot" className="topbar-slot" />
         <div className="meta">
-          {schoolStatus === 'ok' && school && (
-            <button className="badge ok as-link" onClick={() => go('settings')} title={`학교 아이디 ${schoolId} 의 과목·출판사를 쓰고 있습니다`}>
-              {school.schoolName || schoolId}
-            </button>
-          )}
-          {schoolStatus === 'missing' && (
-            <button className="badge warn as-link" onClick={() => go('settings')}>
-              학교 아이디 확인 필요
-            </button>
-          )}
-          {schoolStatus === 'error' && (
-            <button className="badge warn as-link" onClick={() => go('settings')}>
-              학교 자료 연결 실패
-            </button>
-          )}
-          {isOwner && <span className="badge info">담당자</span>}
           <button className={`btn sm ghost ${route === 'settings' ? 'active' : ''}`} onClick={() => go('settings')}>
             설정
           </button>
-          {user ? (
-            <button className="btn sm" onClick={signOut} title={`${user.email} 로 로그인했습니다`}>
-              로그아웃
-            </button>
-          ) : (
-            <button
-              className="btn sm"
-              onClick={() => go('settings')}
-              onContextMenu={(e) => {
-                e.preventDefault()
-                go('root')
-              }}
-              title="담당 선생님 로그인"
-            >
-              로그인
-            </button>
-          )}
         </div>
       </header>
       {route === '' && <Start go={go} />}
       {route === 'personal' && <Personal go={go} />}
       {route === 'compile' && <Compile go={go} />}
       {(route === 'settings' || route === 'admin') && <Settings go={go} />}
-      {route === 'privacy' && <Privacy go={go} />}
-      {route === 'root' && <Root go={go} />}
     </div>
   )
 }

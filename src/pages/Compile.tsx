@@ -12,7 +12,6 @@ import { Form2Sheet } from '../components/Form2Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
-import { SchoolConnect } from '../components/SchoolConnect'
 import { SheetFit } from '../components/SheetFit'
 import { NoticeModal } from '../components/NoticeModal'
 
@@ -21,7 +20,7 @@ type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
 type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
 
-const AI_NOTE = '올린 평가표에서 계산한 초안입니다. 원본과 대조해 확인해 주세요.'
+const DRAFT_NOTE = '올린 평가표에서 계산한 초안입니다. 원본과 대조해 확인해 주세요.'
 
 /** 위원 문서에서 이 출판사의 총점을 꺼낸다 (이름으로 맞춘다) */
 function totalOf(member: SummaryMember, pubName: string): number | null {
@@ -33,7 +32,7 @@ function totalOf(member: SummaryMember, pubName: string): number | null {
 }
 
 export function Compile({ go }: { go: (h: string) => void }) {
-  const { master, summaries, saveSummary, deleteSummary, schoolStatus } = useAppData()
+  const { master, summaries, saveSummary, deleteSummary } = useAppData()
   const [step, setStep] = useState(0)
   const [writerName, setWriterName] = useState('')
   const [subjectId, setSubjectId] = useState('')
@@ -156,7 +155,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const generate = async () => {
     const name = subject?.name || subjectName.trim()
     if (!name) return setMsg({ type: 'warn', text: '과목을 선택하거나 과목명을 입력하세요.' })
-    if (!members.length) return setMsg({ type: 'warn', text: '위원 점수표(PDF 또는 JSON)를 먼저 올리세요.' })
+    if (!members.length) return setMsg({ type: 'warn', text: '위원 평가표 PDF를 먼저 올리세요.' })
     if (!mergedPublishers.length) return setMsg({ type: 'warn', text: '출판사를 읽지 못했습니다. 위원이 [인쇄 / PDF 저장]으로 만든 파일인지 확인해 주세요.' })
     if (members.length < 3 && !confirm(`위원이 ${members.length}명입니다. 계획서는 3인 이상을 권장합니다(소규모 학교 2인 가능). 그대로 만들까요?`)) return
     if (existing && !confirm('이 과목의 총괄표가 이미 있습니다. 올린 점수표로 다시 만들까요? (취소하면 기존 총괄표를 엽니다)')) {
@@ -195,7 +194,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
       recommendDoc,
       recommendWriter: existing?.recommendWriter || writer,
       recommendChecker: existing?.recommendChecker || { position: '교감', name: '' },
-      aiCount: existing?.aiCount || 0,
       updatedAt: new Date().toISOString(),
     }
     await saveSummary(next)
@@ -215,21 +213,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
     setWriterName(s.writer.name)
     setStep(1)
     setMsg(null)
-  }
-
-  const importSummaryJson = async (files: FileList | null) => {
-    const f = files?.[0]
-    if (!f) return
-    try {
-      const raw = JSON.parse(await readFileText(f)) as Summary
-      if (!raw.members || !raw.publishers || !raw.matrix) throw new Error('총괄표 파일이 아닙니다.')
-      const next = { ...raw, id: raw.id || uid() }
-      await saveSummary(next)
-      loadExisting(next)
-      setMsg({ type: 'ok', text: `${next.subjectName} 총괄표를 불러왔습니다.` })
-    } catch (e) {
-      setMsg({ type: 'error', text: `불러오기 실패: ${(e as Error).message}` })
-    }
   }
 
   const autoRank = () => {
@@ -286,15 +269,13 @@ export function Compile({ go }: { go: (h: string) => void }) {
         settings={master.settings}
         initialKeys={[]}
         initialText={item.text}
-        aiCount={sum.aiCount}
         sources={sources}
         avoid={sum.recommendDoc.filter((r) => r.rank !== item.rank && r.text).map((r) => r.text)}
         notice={pub ? undefined : '이 순위의 출판사를 먼저 표에서 고르면 문장을 생성할 수 있습니다.'}
         onCancel={() => setModalRank(null)}
-        onApply={({ text, aiUsed }) => {
+        onApply={({ text }) => {
           update((prev) => ({
             recommendDoc: prev.recommendDoc.map((r) => (r.rank === item.rank ? { ...r, text } : r)),
-            aiCount: prev.aiCount + aiUsed,
           }))
           setModalRank(null)
         }}
@@ -332,7 +313,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
       <div className="work-layout">
         {/* 왼쪽: 입력 사이드바 */}
         <aside className="work-side no-print">
-          <SchoolConnect />
           <div className="card side-card">
             <h3>기본정보</h3>
             <label className="field">
@@ -368,10 +348,10 @@ export function Compile({ go }: { go: (h: string) => void }) {
                 addFiles(e.dataTransfer.files)
               }}
             >
-              <p>평가표 PDF를 끌어다 놓거나</p>
+              <p>위원들이 보낸 평가표 PDF를 끌어다 놓거나</p>
               <label className="btn primary sm">
                 + 추가하기
-                <input type="file" accept="application/pdf,.pdf,application/json,.json" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
+                <input type="file" accept="application/pdf,.pdf" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
               </label>
             </div>
 
@@ -403,10 +383,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
                 <button className="btn sm" onClick={addManual}>
                   위원 직접 추가
                 </button>
-                <label className="btn sm">
-                  총괄표 파일(JSON) 불러오기
-                  <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => importSummaryJson(e.target.files)} />
-                </label>
               </div>
             )}
           </div>
@@ -484,7 +460,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
               <div className="card">
                 <div className="main-head">
                   <h2>평가 총괄표</h2>
-                  <span className="ai-note">{AI_NOTE}</span>
+                  <span className="ai-note">{DRAFT_NOTE}</span>
                   <div className="main-head-actions">
                     <button className="btn" onClick={() => setStep(0)}>
                       이전
@@ -611,7 +587,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>인쇄·저장</h2>
-                <span className="ai-note">{AI_NOTE}</span>
+                <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(1)}>
                     이전

@@ -1,6 +1,5 @@
 import type { Criterion, DocPublisher, Evaluation, RecommendItem, SummaryMember } from '../types'
 import { uid } from '../seed'
-import { readFileText } from './csv'
 import { buildRows, flatten, looksLikeForm1, looksLikeForm3, parseForm1, parseForm3, type ParsedForm1, type TextItem } from './form1Parse'
 
 export interface ImportProgress {
@@ -73,7 +72,6 @@ function toEvaluation(p: ParsedForm1, recommends: { rank: number; publisherName:
     summaryKeys: [],
     summaryOpinion: p.summaryOpinion,
     recommend,
-    aiCount: 0,
     updatedAt: new Date().toISOString(),
   }
 }
@@ -177,32 +175,18 @@ async function readPdf(file: File, onProgress: (p: ImportProgress) => void): Pro
   }
 }
 
-async function readJson(file: File): Promise<{ member: SummaryMember } | { error: string }> {
-  try {
-    const raw = JSON.parse(await readFileText(file)) as Evaluation
-    if (!raw.scores || !raw.publishers?.length || !raw.criteria?.length) throw new Error('평가표 파일이 아닙니다.')
-    return {
-      member: {
-        id: uid(),
-        teacherName: raw.teacherName || file.name.replace(/\.json$/i, ''),
-        source: 'json',
-        evaluation: { ...raw, id: raw.id || uid() },
-        warnings: [],
-      },
-    }
-  } catch (e) {
-    return { error: (e as Error).message }
-  }
-}
-
-/** 위원들이 보낸 PDF·JSON 파일에서 평가표를 읽어 총괄표의 위원 열로 만든다 */
+/** 위원들이 보낸 평가표 PDF 를 읽어 총괄표의 위원 열로 만든다 */
 export async function importMemberFiles(files: File[], onProgress: (p: ImportProgress) => void): Promise<ImportResult> {
   const members: SummaryMember[] = []
   const errors: { file: string; reason: string }[] = []
   for (const file of files) {
     try {
       onProgress({ file: file.name, note: '읽는 중…' })
-      const res = /\.json$/i.test(file.name) ? await readJson(file) : await readPdf(file, onProgress)
+      if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') {
+        errors.push({ file: file.name, reason: '평가표 PDF 파일만 올릴 수 있습니다.' })
+        continue
+      }
+      const res = await readPdf(file, onProgress)
       if ('error' in res) errors.push({ file: file.name, reason: res.error })
       else members.push(res.member)
     } catch (e) {

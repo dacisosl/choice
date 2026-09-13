@@ -1,5 +1,12 @@
 import type { Criterion, Master, OpinionOption, Settings, Subject } from './types'
 
+/**
+ * 저장 구조 버전.
+ * 3 = 과목·출판사를 학교 계정에서 받도록 바꾸면서 예전 목록을 한 번 비웠다.
+ * 4 = 계정·서버를 걷어내고, 과목·출판사를 앱에 실려 오는 교과서 자료(public/catalog.json)에서 받는다.
+ */
+export const DATA_VERSION = 4
+
 export const uid = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -120,14 +127,11 @@ export const DEFAULT_SETTINGS: Settings = {
   memberHeaderMode: 'name',
   printPersonalRecommend: true,
   averageDecimals: 1,
-  aiModel: 'openai/gpt-4o-mini',
-  aiFallbackModel: 'google/gemini-flash-1.5',
-  aiMaxPerDoc: 10,
 }
 
 export function seedMaster(overrides?: Partial<Settings>): Master {
   return {
-    version: 3,
+    version: DATA_VERSION,
     settings: { ...DEFAULT_SETTINGS, ...overrides },
     subjects: [],
     publishers: [],

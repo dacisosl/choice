@@ -1,8 +1,8 @@
-import type { AppConfig, Evaluation, Master, Summary } from '../types'
+import type { AppConfig, Catalog, Evaluation, Master, Summary } from '../types'
 
 /**
- * 이 컴퓨터(localStorage) 저장. 개인 평가표·총괄표는 여기에만 있다.
- * 마스터는 로컬 캐시이며, 공유가 켜져 있으면 Firestore 사본으로 덮어써진다 (shared.ts).
+ * 이 컴퓨터(localStorage) 저장. 평가표·총괄표·과목·출판사 모두 여기에만 있다.
+ * 서버로 보내는 것은 없다. 과목·출판사는 앱에 실려 오는 교과서 자료(catalog.json)로 채워진다.
  */
 const LS = {
   master: 'choice.master',
@@ -32,6 +32,18 @@ export const loadEvaluations = () => lsGet<Evaluation[]>(LS.evaluations, [])
 export const saveEvaluations = (list: Evaluation[]) => lsSet(LS.evaluations, list)
 export const loadSummaries = () => lsGet<Summary[]>(LS.summaries, [])
 export const saveSummaries = (list: Summary[]) => lsSet(LS.summaries, list)
+
+/** 앱과 함께 배포된 교과서 자료. 파일이 없거나 형식이 어긋나면 null */
+export async function loadCatalog(): Promise<Catalog | null> {
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL}catalog.json`, { cache: 'no-store' })
+    if (!res.ok) return null
+    const json = (await res.json()) as Catalog
+    return Array.isArray(json?.subjects) ? json : null
+  } catch {
+    return null
+  }
+}
 
 export async function loadConfig(): Promise<AppConfig> {
   try {

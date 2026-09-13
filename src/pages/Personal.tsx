@@ -11,7 +11,6 @@ import { Form1Sheet } from '../components/Form1Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
-import { SchoolConnect } from '../components/SchoolConnect'
 import { SheetFit } from '../components/SheetFit'
 import { NoticeModal } from '../components/NoticeModal'
 
@@ -25,10 +24,10 @@ type OpenModal = { kind: 'summary' } | { kind: 'recommend'; rank: number } | nul
 /** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
 type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
 
-const AI_NOTE = 'AI가 생성해 준 초안입니다. 참고자료로만 사용해 주세요.'
+const DRAFT_NOTE = '자동으로 만든 초안입니다. 반드시 검토한 뒤 사용해 주세요.'
 
 export function Personal({ go }: { go: (h: string) => void }) {
-  const { master, evaluations, saveEvaluation, deleteEvaluation, schoolStatus } = useAppData()
+  const { master, evaluations, saveEvaluation, deleteEvaluation } = useAppData()
   const [step, setStep] = useState(0)
   const [ev, setEv] = useState<Evaluation | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
@@ -131,7 +130,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
       summaryKeys: prev?.summaryKeys || [],
       summaryOpinion: prev?.summaryOpinion || '',
       recommend,
-      aiCount: prev?.aiCount || 0,
       updatedAt: new Date().toISOString(),
     }
     latest.current = next
@@ -227,7 +225,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
       tone: 'info',
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
-        'AI가 만든 초안입니다. 점수와 문장이 실제 검토 결과와 맞는지 반드시 확인하고 고친 뒤 제출해 주세요.',
+        '자동으로 만든 초안입니다. 점수와 문장이 실제 검토 결과와 맞는지 반드시 확인하고 고친 뒤 제출해 주세요.',
         '이름 · 과목 · 출판사 · 순위가 맞는지 다시 한 번 살펴 주세요.',
       ],
       confirmLabel: '확인했습니다, 인쇄',
@@ -261,10 +259,9 @@ export function Personal({ go }: { go: (h: string) => void }) {
           settings={master.settings}
           initialKeys={ev.summaryKeys}
           initialText={ev.summaryOpinion}
-          aiCount={ev.aiCount}
           onCancel={() => setModal(null)}
-          onApply={({ text, keys, aiUsed }) => {
-            update((prev) => ({ summaryOpinion: text, summaryKeys: keys, aiCount: prev.aiCount + aiUsed }))
+          onApply={({ text, keys }) => {
+            update({ summaryOpinion: text, summaryKeys: keys })
             setModal(null)
           }}
         />
@@ -286,14 +283,12 @@ export function Personal({ go }: { go: (h: string) => void }) {
         initialKeys={item.keys}
         initialText={item.text}
         initialStrength={item.strength}
-        aiCount={ev.aiCount}
         avoid={ev.recommend.filter((r) => r.rank !== item.rank && r.text).map((r) => r.text)}
         notice={item.pubId ? undefined : '이 순위의 출판사를 먼저 표에서 고르면 문장을 생성할 수 있습니다.'}
         onCancel={() => setModal(null)}
-        onApply={({ text, keys, strength, aiUsed }) => {
+        onApply={({ text, keys, strength }) => {
           update((prev) => ({
             recommend: prev.recommend.map((r) => (r.rank === item.rank ? { ...r, text, keys, strength: strength || r.strength } : r)),
-            aiCount: prev.aiCount + aiUsed,
           }))
           setModal(null)
         }}
@@ -323,7 +318,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
       <div className="work-layout">
         {/* 왼쪽: 입력 사이드바 (모든 단계에서 그대로 보인다) */}
         <aside className="work-side no-print">
-          <SchoolConnect />
           <div className="card side-card">
             <h3>기본정보</h3>
             <label className="field">
@@ -431,7 +425,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>선정 평가표</h2>
-                <span className="ai-note">{AI_NOTE}</span>
+                <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn primary" onClick={goNext}>
                     다음: 추천 의견서
@@ -459,7 +453,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>추천 의견서</h2>
-                <span className="ai-note">{AI_NOTE}</span>
+                <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(0)}>
                     이전
@@ -491,7 +485,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
             <div className="card">
               <div className="main-head">
                 <h2>인쇄·저장</h2>
-                <span className="ai-note">{AI_NOTE}</span>
+                <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
                   <button className="btn" onClick={() => setStep(1)}>
                     이전

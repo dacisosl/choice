@@ -1,0 +1,29 @@
+{
+  "_설명": "과목별 교과서(출판사) 자료입니다. 이 파일만 채워 넣으면 앱의 과목·출판사 목록이 채워집니다. 서버도 로그인도 쓰지 않습니다.",
+  "_형식": {
+    "updatedAt": "자료를 고칠 때마다 날짜를 바꿔 주세요. 이 값이 바뀌면 각 컴퓨터가 새 목록을 받아 갑니다.",
+    "subjects": "과목 하나에 { name, gradeGroup(1·2 또는 3), subjectGroup(교과), publishers: [출판사명 또는 {name, price}] }",
+    "id": "적지 않아도 됩니다. 과목명으로 자동으로 만듭니다."
+  },
+
+  "updatedAt": "2026-09-13",
+  "year": 2027,
+  "subjects": [
+    {
+      "name": "세계사",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "publishers": ["비상교육", "천재교육", "미래엔", "동아출판", "지학사"]
+    },
+    {
+      "name": "확률과 통계",
+      "gradeGroup": "3",
+      "subjectGroup": "수학",
+      "publishers": [
+        { "name": "비상교육", "price": "12,000" },
+        { "name": "천재교육", "price": "12,500" },
+        { "name": "동아출판" }
+      ]
+    }
+  ]
+}

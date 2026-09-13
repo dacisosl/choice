@@ -6,6 +6,8 @@ export interface Subject {
   name: string
   gradeGroup: GradeGroup
   subjectGroup: string
+  /** catalog = 앱에 실려 온 교과서 자료(public/catalog.json). 없으면 이 컴퓨터에서 직접 넣은 것 */
+  source?: 'catalog'
 }
 
 export interface Publisher {
@@ -15,6 +17,8 @@ export interface Publisher {
   order: number
   price?: string
   memo?: string
+  /** catalog = 앱에 실려 온 교과서 자료(public/catalog.json) */
+  source?: 'catalog'
 }
 
 export interface Criterion {
@@ -48,12 +52,9 @@ export interface Settings {
   memberHeaderMode: 'name' | 'number'
   printPersonalRecommend: boolean
   averageDecimals: number
-  aiModel: string
-  aiFallbackModel: string
-  aiMaxPerDoc: number
 }
 
-/** 과목·출판사·평가기준·의견 선택지·설정. 공유 저장소(Firestore)에 두는 유일한 데이터 */
+/** 과목·출판사·평가기준·의견 선택지·설정. 모두 이 컴퓨터(localStorage)에만 있다 */
 export interface Master {
   version: number
   settings: Settings
@@ -96,7 +97,6 @@ export interface Evaluation {
   summaryKeys: string[]
   summaryOpinion: string
   recommend: RecommendItem[]
-  aiCount: number
   updatedAt: string
 }
 
@@ -135,26 +135,29 @@ export interface Summary {
   recommendDoc: SummaryRecommend[]
   recommendWriter: Person
   recommendChecker: Person
-  aiCount: number
   updatedAt: string
 }
 
-/** 마스터 공유용 Firebase 설정. 개인 문서는 저장하지 않는다 */
-export interface FirebaseConfig {
-  apiKey?: string
-  authDomain?: string
-  projectId?: string
-  appId?: string
-  /** 컬렉션 이름 (기본 choice_docs) */
-  collection?: string
-  /** Firestore 데이터베이스 ID. 비우면 (default) */
-  databaseId?: string
-  /** 서비스 운영자(최종 관리자) 구글 계정. Firestore 규칙의 목록과 같아야 한다 */
-  superAdmins?: string[]
+/** public/catalog.json — 과목별 교과서(출판사) 자료. 앱과 함께 배포된다 */
+export interface CatalogSubject {
+  /** 비우면 과목명으로 자동 생성한다 */
+  id?: string
+  name: string
+  gradeGroup?: GradeGroup
+  /** 교과(예: 사회). 의견 문장 고를 때 참고한다 */
+  subjectGroup?: string
+  /** 출판사명 목록. "비상교육" 또는 { name, price } 둘 다 된다 */
+  publishers: (string | { name: string; price?: string })[]
+}
+
+export interface Catalog {
+  /** 자료 갱신일(예: 2026-09-13). 값이 바뀌면 각 컴퓨터의 목록을 새로 받아 간다 */
+  updatedAt?: string
+  year?: number
+  subjects: CatalogSubject[]
 }
 
 export interface AppConfig {
   schoolName?: string
   year?: number
-  firebase?: FirebaseConfig
 }
