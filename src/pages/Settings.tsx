@@ -252,7 +252,7 @@ function SubjectsTab() {
           <table className="data">
             <thead>
               <tr>
-                <th style={{ width: 80 }}>학년</th>
+                <th style={{ width: 90 }}>학교</th>
                 <th style={{ width: 140 }}>교과</th>
                 <th>과목명</th>
                 <th style={{ width: 80 }}>출판사</th>
@@ -264,12 +264,15 @@ function SubjectsTab() {
                 <tr key={s.id}>
                   <td>
                     {canEdit ? (
-                      <select value={s.gradeGroup} onChange={(e) => patch(s.id, { gradeGroup: e.target.value as Subject['gradeGroup'] })}>
-                        <option value="1·2">1·2</option>
-                        <option value="3">3</option>
+                      <select value={s.school || ''} onChange={(e) => patch(s.id, { school: (e.target.value || undefined) as Subject['school'] })}>
+                        <option value="">-</option>
+                        <option value="중">중학교</option>
+                        <option value="고">고등학교</option>
                       </select>
+                    ) : s.school ? (
+                      `${s.school}학교`
                     ) : (
-                      s.gradeGroup
+                      '-'
                     )}
                   </td>
                   <td>{canEdit ? <input type="text" value={s.subjectGroup} onChange={(e) => patch(s.id, { subjectGroup: e.target.value })} /> : s.subjectGroup}</td>

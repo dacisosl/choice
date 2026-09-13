@@ -57,7 +57,7 @@ export function SubjectSearch({ subjects, value, onChange, school, placeholder }
     setOpen(false)
   }
 
-  const label = (s: Subject) => [s.school ? `${s.school}${s.gradeGroup}` : s.gradeGroup, s.subjectGroup].filter(Boolean).join(' · ')
+  const label = (s: Subject) => [s.school ? `${s.school}학교` : '', s.subjectGroup].filter(Boolean).join(' · ')
 
   return (
     <div className="subject-search" ref={box}>
