@@ -269,6 +269,13 @@ export function parseForm1(rows: TextRow[]): ParsedForm1 | null {
  * 순위 숫자와 출판사명은 칸 안에서 세로 가운데에 놓이므로, 의견 글줄과 다른 줄에 나온다.
  * 그래서 순위 숫자의 y를 경계로 삼아 각 줄이 어느 순위에 속하는지 나눈다.
  */
+/** 서식3 아래 서명줄 '작성자 직 교사 성명 홍길동 (인)' 에서 작성자 이름을 읽는다 */
+export function parseForm3Writer(rows: TextRow[]): string {
+  const line = rows.find((r) => r.flat.includes('작성자'))
+  const m = (line?.flat || '').match(/성명\s*(.+?)\s*\(인\)/)
+  return m ? m[1].replace(/\s+/g, '') : ''
+}
+
 export function parseForm3(rows: TextRow[]): ParsedRecommend[] {
   const headIdx = rows.findIndex((r) => r.flat.includes('순위') && r.flat.includes('출판사명'))
   if (headIdx < 0) return []

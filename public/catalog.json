@@ -1,28 +1,2361 @@
 {
-  "_설명": "과목별 교과서(출판사) 자료입니다. 이 파일만 채워 넣으면 앱의 과목·출판사 목록이 채워집니다. 서버도 로그인도 쓰지 않습니다.",
-  "_형식": {
-    "updatedAt": "자료를 고칠 때마다 날짜를 바꿔 주세요. 이 값이 바뀌면 각 컴퓨터가 새 목록을 받아 갑니다.",
-    "subjects": "과목 하나에 { name, gradeGroup(1·2 또는 3), subjectGroup(교과), publishers: [출판사명 또는 {name, price}] }",
-    "id": "적지 않아도 됩니다. 과목명으로 자동으로 만듭니다."
-  },
-
+  "_설명": "과목별 교과서(출판사) 자료. scripts/catalog-from-xls.mjs 로 교과서목록 엑셀에서 만듭니다.",
   "updatedAt": "2026-09-13",
-  "year": 2027,
   "subjects": [
     {
-      "name": "세계사",
-      "gradeGroup": "3",
-      "subjectGroup": "사회",
-      "publishers": ["비상교육", "천재교육", "미래엔", "동아출판", "지학사"]
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학/기술·가정/정보",
+      "name": "과학1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
     },
     {
-      "name": "확률과 통계",
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학/기술·가정/정보",
+      "name": "과학2",
+      "publishers": [
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학/기술·가정/정보",
+      "name": "기술·가정①",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜원교재사",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학/기술·가정/정보",
+      "name": "기술·가정②",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜원교재사",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학/기술·가정/정보",
+      "name": "정보",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜도서출판길벗",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜원교재사",
+        "㈜이오북스",
+        "㈜천재교과서",
+        "능률교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "국어1-1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "국어1-2",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "국어2-1",
+      "publishers": [
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "국어2-2",
+      "publishers": [
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "도덕",
+      "name": "도덕①",
+      "publishers": [
+        "㈜교학사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "도덕",
+      "name": "도덕②",
+      "publishers": [
+        "㈜교학사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "사회①",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜아침나라",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "사회②",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜아침나라",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "사회과부도",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜아침나라",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "㈜지학사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "역사①",
+      "publishers": [
+        "㈜리베르스쿨",
+        "㈜비상교육",
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "역사②",
+      "publishers": [
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "사회",
+      "name": "역사부도",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "보건",
+      "publishers": [
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜지구문화",
+        "㈜천재교과서",
+        "군자출판사㈜",
+        "도서출판담음"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활독일어",
+      "publishers": [
+        "부산광역시교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활러시아어",
+      "publishers": [
+        "강원특별자치도교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활베트남어",
+      "publishers": [
+        "충청남도교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활스페인어",
+      "publishers": [
+        "전라남도교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활아랍어",
+      "publishers": [
+        "울산광역시교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활일본어",
+      "publishers": [
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜시사북스(시사일본어사)",
+        "㈜엔이능률",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활중국어",
+      "publishers": [
+        "㈜NE능률",
+        "㈜다락원",
+        "㈜대학서림",
+        "㈜동양북스",
+        "㈜미래엔",
+        "㈜시사북스(시사중국어사)",
+        "㈜차이나북스",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "생활프랑스어",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "진로와직업",
+      "publishers": [
+        "㈜교학사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜성림출판",
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜이오북스",
+        "㈜지구문화",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜학지사",
+        "능률교과서",
+        "이오미디어"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "한문",
+      "publishers": [
+        "㈜교학사",
+        "㈜글샘교육",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜장원교육",
+        "㈜천재교과서",
+        "대학서림",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "선택",
+      "name": "환경",
+      "publishers": [
+        "㈜지구문화",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "수학",
+      "name": "수학1",
+      "publishers": [
+        "㈜교학사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜엔이능률",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "수학",
+      "name": "수학2",
+      "publishers": [
+        "동아출판㈜",
+        "㈜교학사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜엔이능률",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "영어",
+      "name": "영어1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜엔이능률",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "영어",
+      "name": "영어2",
+      "publishers": [
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜엔이능률",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "예술",
+      "name": "미술①",
+      "publishers": [
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜도서출판성안당",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜아침나라",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "미진사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "예술",
+      "name": "미술②",
+      "publishers": [
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜도서출판성안당",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜아침나라",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "미진사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "예술",
+      "name": "음악1",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜도서출판성안당",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜아침나라",
+        "㈜와이비엠",
+        "㈜음악과생활",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "세광음악출판사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "예술",
+      "name": "음악2",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜도서출판성안당",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜아침나라",
+        "㈜와이비엠",
+        "㈜음악과생활",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "세광음악출판사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "1·2",
+      "subjectGroup": "체육",
+      "name": "체육①",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜도서출판성안당",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜체육과건강",
+        "동아출판㈜",
+        "채움교육"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "과학",
+      "name": "과학2",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "과학",
+      "name": "과학3",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "국어",
+      "name": "국어1-2",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "국어",
+      "name": "국어2-1",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "국어",
+      "name": "국어2-2",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "국어",
+      "name": "국어3-1",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "국어",
+      "name": "국어3-2",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "기술가정",
+      "name": "기술·가정①",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학도서",
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜씨마스",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "원교재사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "기술가정",
+      "name": "기술·가정②",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학도서",
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜씨마스",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "원교재사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "도덕",
+      "name": "도덕①",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "도덕",
+      "name": "도덕②",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "사회①",
+      "publishers": [
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "사회②",
+      "publishers": [
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "사회과부도",
+      "publishers": [
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "역사①",
+      "publishers": [
+        "㈜금성출판사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "역사②",
+      "publishers": [
+        "㈜금성출판사",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "사회",
+      "name": "역사부도",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "보건",
+      "publishers": [
+        "㈜동화사",
+        "㈜와이비엠",
+        "㈜지구문화",
+        "㈜천재교과서",
+        "도서출판들샘"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활독일어",
+      "publishers": [
+        "㈔한국교과서협회(부산교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활러시아어",
+      "publishers": [
+        "㈔한국교과서협회(강원교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활베트남어",
+      "publishers": [
+        "㈔한국교과서협회(충남교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활스페인어",
+      "publishers": [
+        "㈔한국교과서협회(전남교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활아랍어",
+      "publishers": [
+        "㈔한국교과서협회(울산교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활일본어",
+      "publishers": [
+        "㈜NE능률",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜시사북스(시사일본어사)",
+        "㈜천재교과서",
+        "파고다북스"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활중국어",
+      "publishers": [
+        "㈜NE능률",
+        "㈜넥서스",
+        "㈜다락원",
+        "㈜동양북스",
+        "㈜미래엔",
+        "㈜와이비엠",
+        "㈜천재교과서",
+        "시사중국어사",
+        "파고다북스"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "생활프랑스어",
+      "publishers": [
+        "㈔한국교과서협회(서울교육청)"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "진로와직업",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜서울교과서",
+        "㈜성림출판",
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜원교재사",
+        "㈜이오북스",
+        "㈜지학사",
+        "㈜천재교과서",
+        "꿈결출판사",
+        "능률교과서",
+        "동아출판㈜",
+        "웅보출판사",
+        "이오미디어"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "한문",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜대명사",
+        "㈜대학서림",
+        "㈜동화사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜와이비엠",
+        "㈜이젠미디어",
+        "㈜장원교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜한국학력평가원",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "선택",
+      "name": "환경",
+      "publishers": [
+        "㈜서울교과서",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "중",
       "gradeGroup": "3",
       "subjectGroup": "수학",
+      "name": "수학2",
       "publishers": [
-        { "name": "비상교육", "price": "12,000" },
-        { "name": "천재교육", "price": "12,500" },
-        { "name": "동아출판" }
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜좋은책신사고",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "수학",
+      "name": "수학3",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜좋은책신사고",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "영어",
+      "name": "영어1",
+      "publishers": [
+        "㈜NE능률",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "영어",
+      "name": "영어2",
+      "publishers": [
+        "㈜NE능률",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "영어",
+      "name": "영어3",
+      "publishers": [
+        "㈜NE능률",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교육",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "예술",
+      "name": "미술①",
+      "publishers": [
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜아침나라",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "미진사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "예술",
+      "name": "미술②",
+      "publishers": [
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜리베르스쿨",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜아침나라",
+        "㈜와이비엠",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "미진사"
+      ]
+    },
+    {
+      "school": "중",
+      "gradeGroup": "3",
+      "subjectGroup": "예술",
+      "name": "음악①",
+      "publishers": [
+        "㈜교학사",
+        "㈜금성출판사",
+        "㈜다락원",
+        "㈜미래엔",
+        "㈜박영사",
+        "㈜비상교육",
+        "㈜성안당",
+        "㈜아침나라",
+        "㈜와이비엠",
+        "㈜음악과생활"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "건물정보관리기초",
+      "publishers": [
+        "경기도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "건설재료",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "건축기초실습",
+      "publishers": [
+        "대구광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "건축도면해석과제도",
+      "publishers": [
+        "대구광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "건축일반",
+      "publishers": [
+        "경기도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "공업일반",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "기초제도",
+      "publishers": [
+        "부산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "드론기초",
+      "publishers": [
+        "㈜골든벨",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "역학기초",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "측량기초",
+      "publishers": [
+        "경기도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "토목도면해석과제도",
+      "publishers": [
+        "인천광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "토목일반",
+      "publishers": [
+        "제주특별자치도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "건축·토목",
+      "name": "토질∙수리",
+      "publishers": [
+        "경기도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "금융일반",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "기업과경영",
+      "publishers": [
+        "제주특별자치도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "기업자원통합관리",
+      "publishers": [
+        "㈜성림출판",
+        "㈜이오북스",
+        "도서출판드림북",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "노동인권과산업안전보건",
+      "publishers": [
+        "㈜골든벨",
+        "㈜이오북스",
+        "㈜천재교육",
+        "주식회사성림출판"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "디지털과직업생활",
+      "publishers": [
+        "㈜골든벨",
+        "㈜미래융합연구원",
+        "㈜삼양미디어",
+        "㈜씨마스",
+        "㈜이오북스",
+        "㈜천재교육",
+        "㈜플레이스터디"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "마케팅과광고",
+      "publishers": [
+        "㈜이오북스"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "무역영어",
+      "publishers": [
+        "㈜성림출판"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "무역일반",
+      "publishers": [
+        "울산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "보험일반",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "비즈니스커뮤니케이션",
+      "publishers": [
+        "㈜성림출판",
+        "멘토르스쿨",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "사무관리",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜씨마스",
+        "㈜이오북스",
+        "도서출판파스칼",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "상업경제",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜성림출판",
+        "㈜씨마스",
+        "㈜천재교육",
+        "주식회사이오북스"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "성공적인직업생활",
+      "publishers": [
+        "㈜골든벨",
+        "㈜삼양미디어",
+        "㈜서울교과서",
+        "㈜씨마스",
+        "㈜이오북스",
+        "㈜천재교육",
+        "도서출판드림북",
+        "웅보출판사",
+        "주식회사성림출판"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "세무일반",
+      "publishers": [
+        "성림출판"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "유통일반",
+      "publishers": [
+        "경상북도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "전자상거래일반",
+      "publishers": [
+        "경기도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "창업일반",
+      "publishers": [
+        "㈜성림출판"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "회계원리",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜성림출판",
+        "㈜천재교육",
+        "도서출판파스칼"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "경영·금융",
+      "name": "회계정보처리시스템",
+      "publishers": [
+        "㈜성림출판",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "고급물리학",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "고급생명과학",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "고급지구과학",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "고급화학",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "과학의역사와문화",
+      "publishers": [
+        "㈜비상교육",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "과학탐구실험1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "과학탐구실험2",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "기후변화와환경생태",
+      "publishers": [
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜천재교육",
+        "일진사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "물리학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "물리학실험",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "물질과에너지",
+      "publishers": [
+        "동아출판㈜",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "생명과학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "생명과학실험",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "생물의유전",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "세포와물질대사",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "역학과에너지",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "융합과학탐구",
+      "publishers": [
+        "㈜비상교육",
+        "㈜새담",
+        "㈜천재교육",
+        "대전광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "전자기와양자",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "지구과학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "지구과학실험",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "지구시스템과학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "통합과학1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "통합과학2",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "행성우주과학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "화학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "화학반응의세계",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교과서",
+        "동아출판㈜"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "과학",
+      "name": "화학실험",
+      "publishers": [
+        "㈜선두"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광문화와자원",
+      "publishers": [
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광서비스",
+      "publishers": [
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광영어",
+      "publishers": [
+        "㈜이젠교육",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광일반",
+      "publishers": [
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광일본어",
+      "publishers": [
+        "㈜시사북스(시사일본어사)",
+        "㈜시사북스"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광중국어",
+      "publishers": [
+        "제주특별자치도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "관광콘텐츠개발",
+      "publishers": [
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "레저서비스일반",
+      "publishers": [
+        "부산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "관광·레저",
+      "name": "전시컨벤션이벤트일반",
+      "publishers": [
+        "부산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "교육의이해",
+      "publishers": [
+        "㈜피와이메이트",
+        "㈜학지사",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "논리와사고",
+      "publishers": [
+        "㈜천재교육",
+        "교육출판세종"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "논술",
+      "publishers": [
+        "㈜비상교육",
+        "㈜씨마스",
+        "㈜천재교육",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "보건",
+      "publishers": [
+        "㈜들샘미디어",
+        "㈜와이비엠",
+        "㈜지구문화",
+        "㈜천재교과서",
+        "군자출판사㈜",
+        "도서출판담음"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "삶과종교",
+      "publishers": [
+        "동북대학교출판문화원",
+        "(사)두란노서원",
+        "㈜선두",
+        "한국천주교중앙협의회"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "생태와환경",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜지구문화",
+        "㈜천재교과서",
+        "주식회사지구문화"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "인간과경제활동",
+      "publishers": [
+        "㈜성림출판",
+        "㈜이오북스",
+        "㈜천재교육",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "인간과심리",
+      "publishers": [
+        "㈜피와이메이트",
+        "㈜학지사",
+        "㈜리베르스쿨",
+        "㈜비상교육",
+        "㈜성림출판",
+        "㈜씨마스",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "인간과철학",
+      "publishers": [
+        "㈜천재교육",
+        "㈜해냄에듀"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "교양",
+      "name": "진로와직업",
+      "publishers": [
+        "㈜미래엔",
+        "㈜삼양미디어",
+        "㈜성림출판",
+        "㈜씨마스",
+        "㈜이오북스",
+        "㈜지학사",
+        "㈜천재교과서",
+        "㈜학지사",
+        "이오미디어"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "공통국어1",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "주식회사창비교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "공통국어2",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "주식회사창비교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "독서와작문",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "주식회사창비교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "독서토론과글쓰기",
+      "publishers": [
+        "㈜교학사",
+        "㈜미래엔",
+        "㈜지학사",
+        "㈜천재교과서"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "매체의사소통",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "문학",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "주식회사창비교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "문학과영상",
+      "publishers": [
+        "㈜미래엔",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "언어생활탐구",
+      "publishers": [
+        "㈜비상교육",
+        "㈜천재교과서",
+        "상문연구사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "주제탐구독서",
+      "publishers": [
+        "㈜교학사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜천재교육",
+        "㈜해냄에듀",
+        "상문연구사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "직무의사소통",
+      "publishers": [
+        "㈜비상교육",
+        "㈜천재교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "국어",
+      "name": "화법과언어",
+      "publishers": [
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜지학사",
+        "㈜창비교육",
+        "㈜천재교과서",
+        "㈜해냄에듀",
+        "동아출판㈜",
+        "주식회사창비교육"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "기계기초공작",
+      "publishers": [
+        "㈜서울교과서",
+        "도서출판드림북",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "기계기초역학",
+      "publishers": [
+        "충청남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "기계일반",
+      "publishers": [
+        "㈜서울교과서",
+        "㈜성림출판",
+        "웅보출판사",
+        "일진사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "기계제도",
+      "publishers": [
+        "웅보출판사",
+        "일진사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "냉동공조일반",
+      "publishers": [
+        "서울특별시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "산업설비",
+      "publishers": [
+        "일진사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "선박건조",
+      "publishers": [
+        "경상남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "선박구조",
+      "publishers": [
+        "경상남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "선박이론",
+      "publishers": [
+        "울산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "선체도면독도와제도",
+      "publishers": [
+        "울산광역시교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "유체기계",
+      "publishers": [
+        "충청남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "자동차기관",
+      "publishers": [
+        "㈜골든벨",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "자동차섀시",
+      "publishers": [
+        "㈜골든벨"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "자동차일반",
+      "publishers": [
+        "㈜골든벨"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "자동차전기‧전자제어",
+      "publishers": [
+        "㈜골든벨"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "전자기계이론",
+      "publishers": [
+        "충청북도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "항공기실무기초",
+      "publishers": [
+        "경상남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기계",
+      "name": "항공기일반",
+      "publishers": [
+        "경상남도교육청"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기술·가정/정보",
+      "name": "기술·가정",
+      "publishers": [
+        "㈜교문사",
+        "㈜교학도서",
+        "㈜금성출판사",
+        "㈜미래엔",
+        "㈜비상교육",
+        "㈜삼양미디어",
+        "㈜이오북스",
+        "㈜지학사",
+        "㈜천재교과서",
+        "동아출판㈜",
+        "이지원"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기술·가정/정보",
+      "name": "데이터과학",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜와이비엠",
+        "㈜천재교과서",
+        "올드앤뉴"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기술·가정/정보",
+      "name": "로봇과공학세계",
+      "publishers": [
+        "㈜삼양미디어",
+        "㈜천재교과서",
+        "교육출판세종",
+        "웅보출판사"
+      ]
+    },
+    {
+      "school": "고",
+      "gradeGroup": "1·2",
+      "subjectGroup": "기술·가정/정보",
+      "name": "생애설계와자립",
+      "publishers": [
+        "㈜성림출판"
       ]
     }
   ]

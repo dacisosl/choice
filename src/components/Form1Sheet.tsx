@@ -33,7 +33,7 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
   const pubColWidth = N ? Math.max(48, Math.floor(520 / N)) : 60
 
   return (
-    <div className={`form-sheet landscape ${readOnly ? 'readonly' : ''}`}>
+    <div className={`form-sheet form1 landscape ${readOnly ? 'readonly' : ''}`}>
       <div className="form-title">검정(인정)도서 선정 평가표</div>
       <div className="form-head">
         <div />

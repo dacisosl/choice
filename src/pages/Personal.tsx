@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocPublisher, Evaluation, RecommendItem } from '../types'
+import type { DocPublisher, Evaluation, RecommendItem, SchoolLevel } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
 import { lsGet, lsSet } from '../store/storage'
 import { buildDraftScores, checkScoreEdit, criteriaFor, publishersFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheets } from '../lib/print'
-import { SubjectSelect } from '../components/SubjectSelect'
+import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
@@ -16,6 +16,7 @@ import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['선정 평가표', '추천 의견서', '인쇄·저장']
 const NAME_KEY = 'choice.teacherName'
+const SCHOOL_KEY = 'choice.schoolLevel'
 const pubsKey = (subjectId: string) => `choice.pubs.${subjectId}`
 
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
@@ -38,6 +39,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
 
   // 기본정보
   const [teacherName, setTeacherName] = useState('')
+  const [school, setSchool] = useState<SchoolLevel | null>(null)
   const [subjectId, setSubjectId] = useState('')
   const [customSubject, setCustomSubject] = useState('')
   const [pubs, setPubs] = useState<DocPublisher[]>([])
@@ -46,7 +48,16 @@ export function Personal({ go }: { go: (h: string) => void }) {
   useEffect(() => {
     const saved = lsGet<string>(NAME_KEY, '')
     if (saved) setTeacherName(saved)
+    const lv = lsGet<SchoolLevel | null>(SCHOOL_KEY, null)
+    if (lv === '중' || lv === '고') setSchool(lv)
   }, [])
+
+  /** 중·고 를 고르면 그 학교 과목만 찾는다 (한 번 고르면 기억한다) */
+  const pickSchool = (lv: SchoolLevel) => {
+    setSchool(lv)
+    lsSet(SCHOOL_KEY, lv)
+    if (subjectId) pickSubject('')
+  }
 
   // 학교 목록에 과목이 없으면 이름을 직접 적어 쓸 수 있다
   const listed = master.subjects.find((s) => s.id === subjectId)
@@ -224,11 +235,15 @@ export function Personal({ go }: { go: (h: string) => void }) {
     })
   }
 
-  /** 인쇄 전에 책임·검토를 한 번 짚어 준다 */
-  const askPrint = () => {
+  /**
+   * 인쇄 전에 책임·검토를 한 번 짚어 준다.
+   * 평가표와 추천 의견서는 따로 저장한다 — 총괄 선생님이 위원들의 평가표만 모아 올리기 쉽도록.
+   */
+  const askPrint = (kind: 'form1' | 'form3') => {
     if (!ev) return
+    const what = kind === 'form1' ? '선정 평가표' : '추천 의견서'
     setNotice({
-      title: '인쇄하기 전에 확인해 주세요',
+      title: `${what}를 인쇄하기 전에 확인해 주세요`,
       tone: 'info',
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
@@ -238,7 +253,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
       confirmLabel: '확인했습니다, 인쇄',
       onConfirm: () => {
         setNotice(null)
-        printSheets(undefined, `선정서류_${ev.subjectName}_${ev.teacherName}`)
+        printSheets(`.form-sheet.${kind}`, `${what}_${ev.subjectName}_${ev.teacherName}`)
       },
     })
   }
@@ -335,14 +350,25 @@ export function Personal({ go }: { go: (h: string) => void }) {
               이름
               <input type="text" value={teacherName} onChange={(e) => setTeacherName(e.target.value)} placeholder="홍길동" />
             </label>
-            <label className="field">
+            <div className="field">
+              학교
+              <div className="seg">
+                <button className={school === '중' ? 'on' : ''} onClick={() => pickSchool('중')}>
+                  중학교
+                </button>
+                <button className={school === '고' ? 'on' : ''} onClick={() => pickSchool('고')}>
+                  고등학교
+                </button>
+              </div>
+            </div>
+            <div className="field">
               과목
               {master.subjects.length > 0 ? (
-                <SubjectSelect subjects={master.subjects} value={subjectId} onChange={pickSubject} />
+                <SubjectSearch subjects={master.subjects} value={subjectId} onChange={pickSubject} school={school} />
               ) : (
                 <input type="text" value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} placeholder="예: 세계사" />
               )}
-            </label>
+            </div>
             {master.subjects.length > 0 && !listed && (
               <label className="field">
                 목록에 없으면 직접 입력
@@ -503,15 +529,18 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={askPrint}>
-                    인쇄 / PDF 저장
+                  <button className="btn primary" onClick={() => askPrint('form1')}>
+                    평가표 인쇄·PDF
+                  </button>
+                  <button className="btn primary" onClick={() => askPrint('form3')}>
+                    추천 의견서 인쇄·PDF
                   </button>
                   <button className="btn" onClick={exportJson}>
                     JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 평가표는 가로, 추천 의견서는 세로로 함께 출력되며, 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 평가표(가로)와 추천 의견서(세로)는 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form1Sheet

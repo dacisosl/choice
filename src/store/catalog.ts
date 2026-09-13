@@ -1,4 +1,4 @@
-import type { Catalog, GradeGroup, Master, Publisher, Subject } from '../types'
+import type { Catalog, GradeGroup, Master, Publisher, SchoolLevel, Subject } from '../types'
 
 /**
  * public/catalog.json — 과목별 교과서(출판사) 자료.
@@ -14,10 +14,10 @@ export function catalogStamp(cat: Catalog): string {
   return `auto-${n}-${pubs}`
 }
 
-/** 과목명에서 안정적인 id 를 만든다 (자료를 다시 받아도 같은 id) */
-function subjectId(name: string, given?: string): string {
+/** 학교·학년군·과목명에서 안정적인 id 를 만든다 (자료를 다시 받아도 같은 id) */
+function subjectId(name: string, school: string, grade: string, given?: string): string {
   if (given && given.trim()) return given.trim()
-  return `cat-${name.trim().replace(/\s+/g, '-')}`
+  return `cat-${school || '-'}${grade}-${name.trim().replace(/\s+/g, '-')}`
 }
 
 export function applyCatalog(master: Master, cat: Catalog): Master {
@@ -27,13 +27,16 @@ export function applyCatalog(master: Master, cat: Catalog): Master {
   for (const raw of cat.subjects || []) {
     const name = (raw.name || '').trim()
     if (!name) continue
-    const id = subjectId(name, raw.id)
+    const school = (raw.school === '중' || raw.school === '고' ? raw.school : undefined) as SchoolLevel | undefined
+    const gradeGroup = (raw.gradeGroup as GradeGroup) || '3'
+    const id = subjectId(name, school || '', gradeGroup, raw.id)
     if (subjects.some((s) => s.id === id)) continue
     subjects.push({
       id,
       name,
-      gradeGroup: (raw.gradeGroup as GradeGroup) || '3',
+      gradeGroup,
       subjectGroup: (raw.subjectGroup || '').trim(),
+      school,
       source: 'catalog',
     })
     ;(raw.publishers || []).forEach((p, i) => {

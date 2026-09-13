@@ -25,7 +25,7 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
   const M = members.length
 
   return (
-    <div className={`form-sheet ${readOnly ? 'readonly' : ''}`}>
+    <div className={`form-sheet form2 ${readOnly ? 'readonly' : ''}`}>
       <div className="form-title">검정(인정)도서 선정기준 평가 총괄표</div>
       <div className="form-head">
         <div>

@@ -248,7 +248,7 @@ function SubjectsTab() {
           </>
         )}
 
-        <div className="scroll-x" style={{ marginTop: 12, maxHeight: 520, overflowY: 'auto' }}>
+        <div className="scroll-x list-scroll" style={{ marginTop: 12 }}>
           <table className="data">
             <thead>
               <tr>

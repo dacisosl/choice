@@ -1,11 +1,15 @@
 export type GradeGroup = '1·2' | '3'
 export type Tone = 'formal' | 'plain' // formal: ~함/~됨 (개조식), plain: ~합니다 (서술식)
 
+export type SchoolLevel = '중' | '고'
+
 export interface Subject {
   id: string
   name: string
   gradeGroup: GradeGroup
   subjectGroup: string
+  /** 중학교 / 고등학교. 예전 자료에는 없을 수 있다 */
+  school?: SchoolLevel
   /** catalog = 앱에 실려 온 교과서 자료(public/catalog.json). 없으면 이 컴퓨터에서 직접 넣은 것 */
   source?: 'catalog'
 }
@@ -140,9 +144,11 @@ export interface Summary {
 
 /** public/catalog.json — 과목별 교과서(출판사) 자료. 앱과 함께 배포된다 */
 export interface CatalogSubject {
-  /** 비우면 과목명으로 자동 생성한다 */
+  /** 비우면 학교·학년군·과목명으로 자동 생성한다 */
   id?: string
   name: string
+  /** 중 / 고 */
+  school?: SchoolLevel
   gradeGroup?: GradeGroup
   /** 교과(예: 사회). 의견 문장 고를 때 참고한다 */
   subjectGroup?: string

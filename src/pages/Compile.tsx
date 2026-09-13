@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocPublisher, Person, Summary, SummaryMember, SummaryRecommend } from '../types'
+import type { DocPublisher, Person, SchoolLevel, Summary, SummaryMember, SummaryRecommend } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
+import { lsGet, lsSet } from '../store/storage'
 import { columnTotal, computeSummary, criteriaFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheets } from '../lib/print'
 import { importMemberFiles, squeezeName, type ImportProgress } from '../lib/pdfImport'
-import { SubjectSelect } from '../components/SubjectSelect'
+import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
 import { Form2Sheet } from '../components/Form2Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
@@ -16,6 +17,7 @@ import { SheetFit } from '../components/SheetFit'
 import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['점수표 올리기', '총괄표 확인', '인쇄·저장']
+const SCHOOL_KEY = 'choice.schoolLevel'
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
 type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
@@ -46,6 +48,10 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const [modalRank, setModalRank] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [notice, setNotice] = useState<Notice>(null)
+  const [school, setSchool] = useState<SchoolLevel | null>(() => {
+    const lv = lsGet<SchoolLevel | null>(SCHOOL_KEY, null)
+    return lv === '중' || lv === '고' ? lv : null
+  })
   const [sideOpen, setSideOpen] = useState(true)
   const saveTimer = useRef<number | null>(null)
 
@@ -97,11 +103,12 @@ export function Compile({ go }: { go: (h: string) => void }) {
     })
   }
 
-  /** 인쇄 전에 책임·검토를 한 번 짚어 준다 */
-  const askPrint = () => {
+  /** 인쇄 전에 책임·검토를 한 번 짚어 준다. 총괄표와 추천 의견서는 따로 저장한다 */
+  const askPrint = (kind: 'form2' | 'form3') => {
     if (!sum) return
+    const what = kind === 'form2' ? '평가 총괄표' : '추천 의견서'
     setNotice({
-      title: '인쇄하기 전에 확인해 주세요',
+      title: `${what}를 인쇄하기 전에 확인해 주세요`,
       tone: 'info',
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
@@ -111,7 +118,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
       confirmLabel: '확인했습니다, 인쇄',
       onConfirm: () => {
         setNotice(null)
-        printSheets(undefined, `총괄서류_${sum.subjectName}`)
+        printSheets(`.form-sheet.${kind}`, `${what}_${sum.subjectName}`)
       },
     })
   }
@@ -121,10 +128,11 @@ export function Compile({ go }: { go: (h: string) => void }) {
     const list = files ? Array.from(files) : []
     if (!list.length) return
     setMsg(null)
-    const { members: got, errors } = await importMemberFiles(list, setProgress)
+    const { members: got, errors } = await importMemberFiles(list, setProgress, members)
     setProgress(null)
+    // 의견서만 온 파일이 기존 위원에 붙었을 수도 있으므로 목록을 새로 그린다
+    setMembers((prev) => [...prev, ...got])
     if (got.length) {
-      setMembers((prev) => [...prev, ...got])
       const name = got.find((m) => m.evaluation?.subjectName)?.evaluation?.subjectName || ''
       if (name && !subjectId) {
         const hit = master.subjects.find((s) => s.name === name)
@@ -330,14 +338,45 @@ export function Compile({ go }: { go: (h: string) => void }) {
               작성자 이름
               <input type="text" value={writerName} onChange={(e) => setWriterName(e.target.value)} placeholder="홍길동" />
             </label>
-            <label className="field">
+            <div className="field">
+              학교
+              <div className="seg">
+                <button
+                  className={school === '중' ? 'on' : ''}
+                  onClick={() => {
+                    setSchool('중')
+                    lsSet(SCHOOL_KEY, '중')
+                  }}
+                >
+                  중학교
+                </button>
+                <button
+                  className={school === '고' ? 'on' : ''}
+                  onClick={() => {
+                    setSchool('고')
+                    lsSet(SCHOOL_KEY, '고')
+                  }}
+                >
+                  고등학교
+                </button>
+              </div>
+            </div>
+            <div className="field">
               과목
               {master.subjects.length > 0 ? (
-                <SubjectSelect subjects={master.subjects} value={subjectId} onChange={(id) => { setSubjectId(id); setSubjectName(master.subjects.find((s) => s.id === id)?.name || '') }} />
+                <SubjectSearch
+                  subjects={master.subjects}
+                  value={subjectId}
+                  school={school}
+                  onChange={(id) => {
+                    setSubjectId(id)
+                    setSubjectName(master.subjects.find((s) => s.id === id)?.name || '')
+                  }}
+                />
               ) : (
                 <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
               )}
-            </label>
+            </div>
             {master.subjects.length > 0 && !subjectId && (
               <label className="field">
                 목록에 없으면 직접 입력
@@ -604,15 +643,18 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={askPrint}>
-                    인쇄 / PDF 저장
+                  <button className="btn primary" onClick={() => askPrint('form2')}>
+                    총괄표 인쇄·PDF
+                  </button>
+                  <button className="btn primary" onClick={() => askPrint('form3')}>
+                    추천 의견서 인쇄·PDF
                   </button>
                   <button className="btn" onClick={exportJson}>
                     JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 총괄표는 가로, 추천 의견서는 세로로 함께 출력됩니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 총괄표와 추천 의견서는 각각 저장합니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form2Sheet

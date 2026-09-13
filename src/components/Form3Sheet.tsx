@@ -27,7 +27,7 @@ interface Props {
 export function Form3Sheet({ subjectName, publishers, rows, writer, checker, variant, teacherName, readOnly, onTextChange, onPubChange, onOpinionClick }: Props) {
   const pubName = (id: string | null) => publishers.find((p) => p.id === id)?.name || ''
   return (
-    <div className={`form-sheet ${readOnly ? 'readonly' : ''}`}>
+    <div className={`form-sheet form3 ${readOnly ? 'readonly' : ''}`}>
       <div className="form-title">추천 검정(인정)도서 및 추천 의견서</div>
       <div className="form-head">
         <div>

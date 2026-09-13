@@ -272,6 +272,8 @@ table.data tbody tr:hover td { background: #fbfaf6; }
 table.data input[type='text'], table.data input[type='number'], table.data select { width: 100%; height: 34px; padding: 4px 8px; font-size: 13.5px; border-radius: 8px; }
 table.data input[type='number'] { width: 76px; text-align: center; font-weight: 600; color: var(--primary); }
 .scroll-x { overflow-x: auto; }
+/* 과목·출판사 목록이 길어도 페이지가 늘어나지 않게 목록 안에서 스크롤한다 */
+.list-scroll { max-height: 42vh; overflow-y: auto; overflow-x: auto; border-radius: var(--radius-sm); }
 
 /* 편집 셀 */
 .cell-edit { width: 100%; height: 100%; border: none; background: #fff8dc; text-align: center; padding: 2px; }
@@ -389,6 +391,42 @@ td.num { text-align: center; }
 .sheet-fit-space { position: relative; }
 .sheet-fit-inner { position: absolute; top: 0; left: 0; transform-origin: top left; width: max-content; }
 /* 문서 영역 머리줄: 제목 왼쪽, 이동·인쇄 버튼 오른쪽 */
+/* 중·고 고르기 */
+.seg { display: flex; gap: 6px; }
+.seg button {
+  flex: 1 1 0; height: 40px; border-radius: var(--radius-sm); cursor: pointer;
+  border: 1px solid var(--line); background: #fff; color: var(--text-2); font-size: 14px; font-weight: 600;
+}
+.seg button:hover { border-color: var(--line-card); background: var(--sur-hover); }
+.seg button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* 과목 검색 */
+.subject-search { position: relative; }
+.subject-search input { width: 100%; }
+.subject-picked {
+  display: flex; align-items: center; gap: 8px; justify-content: space-between;
+  border: 1px solid var(--primary-soft-line); background: var(--primary-soft);
+  border-radius: var(--radius-sm); padding: 7px 8px 7px 12px; min-height: 40px;
+}
+.subject-picked > div { min-width: 0; }
+.subject-picked b { color: var(--title); }
+.subject-picked .muted { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.subject-picked .btn { flex: 0 0 auto; }
+.subject-hits {
+  position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+  max-height: 46vh; overflow-y: auto; background: var(--sur);
+  border: 1px solid var(--line-card); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft);
+}
+.subject-hit {
+  display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left;
+  border: none; background: none; cursor: pointer; padding: 8px 12px; border-bottom: 1px solid var(--line);
+}
+.subject-hit:last-child { border-bottom: none; }
+.subject-hit.on { background: var(--primary-soft); }
+.subject-hit .nm { font-size: 14px; font-weight: 600; color: var(--text); }
+.subject-hit .sub { font-size: 12px; color: var(--muted); }
+.subject-empty { padding: 12px; font-size: 13px; color: var(--text-2); }
+
 .side-toggle { display: none; }
 .swipe-hint { display: none; }
 .main-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
@@ -520,7 +558,9 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .modal-head { padding: 12px 14px; }
   .modal-body { padding: 12px 14px; }
   .modal-foot { padding: 10px 14px; }
-  .modal-foot .btn { flex: 1 1 0; }
+  /* 글자가 긴 버튼 두 개가 겹치지 않게 세로로 쌓는다 (실행 버튼이 위) */
+  .modal-foot { flex-direction: column-reverse; }
+  .modal-foot .btn { width: 100%; white-space: normal; height: auto; min-height: 44px; padding: 10px 16px; }
   .modal-gen { gap: 6px; }
   .modal-gen select { flex: 1 1 auto; }
 
@@ -542,17 +582,20 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   /* 기본은 세로(서식2·3), 가로가 필요한 서식1만 landscape 페이지를 쓴다 */
   @page { size: A4 portrait; margin: 12mm; }
   @page landscape { size: A4 landscape; margin: 10mm; }
-  html, body { background: #fff !important; margin: 0; padding: 0; height: auto; }
+  /* 화면용 min-height:100vh 가 남아 있으면 서식 뒤에 빈 장이 한 쪽 더 나온다 */
+  html, body { background: #fff !important; margin: 0; padding: 0; height: auto; min-height: 0 !important; }
+  #root, .app { min-height: 0 !important; }
   .no-print, .topbar, .steps, .steps-bar, .tabs, .actions, .preview-toolbar, .alert, .hero-split, .steps3, .stats-line, .start-note,
-  .modal-backdrop, .print-hide, .work-side, .main-head, .card > p.muted { display: none !important; }
+  .modal-backdrop, .print-hide, .work-side, .main-head, .side-toggle, .swipe-hint,
+  .card > p.muted, .card > p.note { display: none !important; }
   /* 서식이 들어 있지 않은 카드만 숨긴다 */
   .card:not(.print-keep):not(:has(.form-sheet)) { display: none !important; }
   .card { border: none !important; background: none !important; padding: 0 !important; margin: 0 !important; }
   .work-layout { display: block !important; }
-  /* 화면용 축소를 풀고 원래 크기로 인쇄한다 */
+  /* 화면용 축소를 풀고 원래 크기로 인쇄한다.
+     display:contents 로 감싼 상자를 없애야 서식끼리 형제가 되어 쪽 나눔 규칙이 그대로 먹는다 */
+  .sheet-fit, .sheet-fit-space, .sheet-fit-inner { display: contents !important; }
   .sheet-fit { height: auto !important; overflow: visible !important; }
-  .sheet-fit-space { width: auto !important; height: auto !important; position: static !important; }
-  .sheet-fit-inner { position: static !important; transform: none !important; width: auto !important; }
   .app { max-width: none; padding: 0; margin: 0; }
   .sheet-wrap { overflow: visible; padding: 0; margin: 0; }
   /* 화면용 크기(210mm/297mm, min-height)를 모두 해제해 인쇄 영역에 맞춘다. 두 클래스 선택자로 우선순위를 맞춘다. */
@@ -563,6 +606,9 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   }
   /* 앞에 출력되는 서식이 있을 때만 새 페이지에서 시작 → 앞뒤 빈 페이지가 생기지 않는다 */
   .form-sheet:not(.print-skip) ~ .form-sheet:not(.print-skip) { break-before: page; page-break-before: always; }
+  /* 첫 서식 앞에서는 절대 쪽을 넘기지 않는다 (맨 앞 빈 페이지 방지) */
+  .form-sheet:not(.print-skip):first-of-type { break-before: avoid-page !important; page-break-before: avoid !important; }
+  .work-main, .work-layout, .sheet-wrap, .card { break-before: avoid-page; page-break-before: avoid; }
   .form-sheet.print-skip { display: none !important; }
   .form-sheet.landscape { page: landscape; }
   .form-sheet table.form th { background: #e5e5e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
