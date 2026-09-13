@@ -33,6 +33,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
   const [msg, setMsg] = useState<Msg>(null)
   const [modal, setModal] = useState<OpenModal>(null)
   const [notice, setNotice] = useState<Notice>(null)
+  const [sideOpen, setSideOpen] = useState(true)
   const saveTimer = useRef<number | null>(null)
 
   // 기본정보
@@ -139,6 +140,12 @@ export function Personal({ go }: { go: (h: string) => void }) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => saveEvaluation(next).catch(() => undefined), 1000)
   }, [subject, teacherName, ranks, namedPubs, criteria, master.settings, saveEvaluation])
+
+  // 좁은 화면: 입력이 끝난 단계(2·3단계)에서는 입력 칸을 접어 문서가 바로 보이게 한다
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 760px)').matches) return
+    setSideOpen(step === 0)
+  }, [step])
 
   const myDocs = useMemo(() => [...evaluations].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [evaluations])
 
@@ -315,9 +322,13 @@ export function Personal({ go }: { go: (h: string) => void }) {
       </HeaderSlot>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
 
+      <button className="btn sm side-toggle no-print" onClick={() => setSideOpen((v) => !v)}>
+        {sideOpen ? '입력 칸 접기 ▲' : '입력 칸 열기 ▼'}
+      </button>
+
       <div className="work-layout">
         {/* 왼쪽: 입력 사이드바 (모든 단계에서 그대로 보인다) */}
-        <aside className="work-side no-print">
+        <aside className={`work-side no-print ${sideOpen ? '' : 'closed'}`}>
           <div className="card side-card">
             <h3>기본정보</h3>
             <label className="field">
@@ -417,7 +428,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
           {!ev && (
             <div className="card empty-hint">
               <h2>선정 평가표</h2>
-              <p className="muted small">왼쪽에 이름·과목·출판사(2곳 이상)를 넣고 1순위를 고르면 평가표가 바로 만들어집니다.</p>
+              <p className="muted small">입력 칸에 이름·과목·출판사(2곳 이상)를 넣고 1순위를 고르면 평가표가 바로 만들어집니다.</p>
             </div>
           )}
 
@@ -433,6 +444,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
                 </div>
               </div>
               <p className="muted small">점수 칸을 클릭해 고칠 수 있습니다. 맨 아래 종합의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
+              <p className="swipe-hint">표가 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
               <SheetFit>
                 <Form1Sheet
                   subjectName={ev.subjectName}
@@ -464,6 +476,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
                 </div>
               </div>
               <p className="muted small">순위별 출판사는 자동으로 채워졌습니다. 의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
+              <p className="swipe-hint">서식이 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
               <SheetFit>
                 <Form3Sheet
                   variant="personal"

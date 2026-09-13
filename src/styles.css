@@ -386,8 +386,11 @@ td.num { text-align: center; }
 /* 서식을 화면 크기에 맞춰 줄여 보여 준다 (인쇄 크기는 그대로) */
 .sheet-fit { overflow: hidden; }
 .sheet-fit.scrolls { overflow-y: auto; overflow-x: hidden; }
-.sheet-fit-inner { transform-origin: top left; width: max-content; }
+.sheet-fit-space { position: relative; }
+.sheet-fit-inner { position: absolute; top: 0; left: 0; transform-origin: top left; width: max-content; }
 /* 문서 영역 머리줄: 제목 왼쪽, 이동·인쇄 버튼 오른쪽 */
+.side-toggle { display: none; }
+.swipe-hint { display: none; }
 .main-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .main-head > h2 { flex: 0 0 auto; margin: 0; }
 .main-head-actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
@@ -462,6 +465,79 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .book.back { width: 130px; height: 235px; transform: translateX(-125%) rotate(-3deg); }
 }
 
+/* ─────────── 휴대전화·태블릿 ─────────── */
+@media (max-width: 860px) {
+  /* 상단바: 단계 표시는 아래 줄로 내려 옆으로 밀어 본다 */
+  .topbar { height: auto; min-height: 54px; padding: 8px 20px; flex-wrap: wrap; row-gap: 8px; }
+  .topbar .brand { font-size: 16px; }
+  .topbar-slot { order: 3; flex: 1 0 100%; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .topbar-slot::-webkit-scrollbar { display: none; }
+  .topbar-slot .steps { flex-wrap: nowrap; }
+  .steps .step { white-space: nowrap; }
+}
+
+@media (max-width: 760px) {
+  /* iOS 에서 입력할 때 화면이 확대되지 않도록 16px 이상 */
+  input[type='text'], input[type='number'], input[type='password'], input[type='email'], select, textarea { font-size: 16px; height: 44px; }
+  textarea { height: auto; }
+  .btn { height: 44px; padding: 0 16px; }
+  .btn.sm { height: 36px; }
+
+  .app { padding: 0 14px 14px; }
+  .topbar { margin: 0 -14px 8px; padding: 8px 14px; }
+  .card { padding: 16px 14px; }
+  h1 { font-size: 21px; }
+
+  /* 작성·총괄 화면: 입력 칸을 접었다 펼 수 있게 */
+  .work-layout { gap: 12px; }
+  .work-side { gap: 10px; }
+  .work-side.closed { display: none; }
+  .side-toggle { display: inline-flex; width: 100%; margin-bottom: 2px; }
+  .main-head { gap: 8px; }
+  .main-head > h2 { flex: 1 1 auto; }
+  .main-head-actions { width: 100%; margin-left: 0; }
+  .main-head-actions .btn { flex: 1 1 0; }
+  .ai-note { flex: 1 0 100%; font-size: 12.5px; }
+
+  /* 서식: 읽을 수 있는 크기로 두고 옆으로 밀어 본다 */
+  .sheet-fit { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .sheet-fit.scrolls { overflow-y: hidden; }
+  .swipe-hint { display: block; margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+  .sheet-wrap { padding: 0; }
+
+  /* 표·목록 */
+  .row > * { flex: 1 1 100%; }
+  .tabs { display: flex; width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { white-space: nowrap; }
+  .grid2 { grid-template-columns: 1fr; }
+  .side-doc { flex-wrap: wrap; gap: 8px; }
+
+  /* 의견 창 */
+  .modal { max-height: 92vh; }
+  .modal .opt-groups { max-height: 30vh; }
+  .opt-groups { grid-template-columns: 1fr; }
+  .modal-head { padding: 12px 14px; }
+  .modal-body { padding: 12px 14px; }
+  .modal-foot { padding: 10px 14px; }
+  .modal-foot .btn { flex: 1 1 0; }
+  .modal-gen { gap: 6px; }
+  .modal-gen select { flex: 1 1 auto; }
+
+  /* 첫 화면 */
+  .hero-split { padding-bottom: 10px; }
+  .hero-photo { height: 30vh; min-height: 180px; margin-top: 14px; }
+  .hero-photo img { object-position: 50% 62%; }
+  .cta-tall { min-height: 190px; height: auto; }
+}
+
+@media (max-width: 420px) {
+  .app { padding: 0 10px 12px; }
+  .topbar { margin: 0 -10px 8px; padding: 8px 10px; }
+  .card { padding: 14px 12px; }
+  .steps .step { font-size: 12px; padding: 0 11px; }
+}
+
 @media print {
   /* 기본은 세로(서식2·3), 가로가 필요한 서식1만 landscape 페이지를 쓴다 */
   @page { size: A4 portrait; margin: 12mm; }
@@ -475,7 +551,8 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .work-layout { display: block !important; }
   /* 화면용 축소를 풀고 원래 크기로 인쇄한다 */
   .sheet-fit { height: auto !important; overflow: visible !important; }
-  .sheet-fit-inner { transform: none !important; width: auto !important; }
+  .sheet-fit-space { width: auto !important; height: auto !important; position: static !important; }
+  .sheet-fit-inner { position: static !important; transform: none !important; width: auto !important; }
   .app { max-width: none; padding: 0; margin: 0; }
   .sheet-wrap { overflow: visible; padding: 0; margin: 0; }
   /* 화면용 크기(210mm/297mm, min-height)를 모두 해제해 인쇄 영역에 맞춘다. 두 클래스 선택자로 우선순위를 맞춘다. */

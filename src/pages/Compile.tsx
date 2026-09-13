@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { DocPublisher, Person, Summary, SummaryMember, SummaryRecommend } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
@@ -46,7 +46,14 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const [modalRank, setModalRank] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [notice, setNotice] = useState<Notice>(null)
+  const [sideOpen, setSideOpen] = useState(true)
   const saveTimer = useRef<number | null>(null)
+
+  // 좁은 화면: 올리기가 끝난 단계(2·3단계)에서는 입력 칸을 접어 문서가 바로 보이게 한다
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 760px)').matches) return
+    setSideOpen(step === 0)
+  }, [step])
 
   const subject = master.subjects.find((s) => s.id === subjectId)
   const subjectGroup = subject?.subjectGroup || ''
@@ -310,9 +317,13 @@ export function Compile({ go }: { go: (h: string) => void }) {
         </div>
       )}
 
+      <button className="btn sm side-toggle no-print" onClick={() => setSideOpen((v) => !v)}>
+        {sideOpen ? '입력 칸 접기 ▲' : '입력 칸 열기 ▼'}
+      </button>
+
       <div className="work-layout">
         {/* 왼쪽: 입력 사이드바 */}
-        <aside className="work-side no-print">
+        <aside className={`work-side no-print ${sideOpen ? '' : 'closed'}`}>
           <div className="card side-card">
             <h3>기본정보</h3>
             <label className="field">
@@ -416,7 +427,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
             <div className="card">
               <h2>올린 평가표</h2>
               {members.length === 0 ? (
-                <p className="muted small">왼쪽에서 위원들이 보낸 평가표 PDF를 올리세요. 파일에서 위원명·출판사·점수를 읽어 옵니다.</p>
+                <p className="muted small">입력 칸의 [+ 추가하기]로 위원들이 보낸 평가표 PDF를 올리세요. 파일에서 위원명·출판사·점수를 읽어 옵니다.</p>
               ) : (
                 <div className="scroll-x">
                   <table className="data">
@@ -471,6 +482,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   </div>
                 </div>
                 <p className="muted small">셀을 클릭하면 점수를 고칠 수 있고 총점·평균·순위가 다시 계산됩니다.</p>
+                <p className="swipe-hint">표가 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
                 <div className="actions" style={{ marginTop: 0 }}>
                   <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <input type="checkbox" checked={sortByAvg} onChange={(e) => setSortByAvg(e.target.checked)} /> 평균 내림차순 정렬
