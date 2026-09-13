@@ -6,12 +6,15 @@ import type { Catalog, GradeGroup, Master, Publisher, SchoolLevel, Subject } fro
  * 선생님이 직접 넣은 과목·출판사(source 없음)는 건드리지 않는다.
  */
 
-/** 자료가 바뀌었는지 가리는 값. 갱신일이 없으면 내용으로 만든다 */
+/**
+ * 자료가 바뀌었는지 가리는 값.
+ * 갱신일만 쓰면 날짜를 안 바꾸고 내용만 고쳤을 때 각 컴퓨터가 예전 목록을 계속 쓰게 되므로
+ * 과목 수·출판사 수도 함께 넣는다.
+ */
 export function catalogStamp(cat: Catalog): string {
-  if (cat.updatedAt) return String(cat.updatedAt)
   const n = cat.subjects?.length || 0
   const pubs = (cat.subjects || []).reduce((a, s) => a + (s.publishers?.length || 0), 0)
-  return `auto-${n}-${pubs}`
+  return `${cat.updatedAt || '-'}-${n}-${pubs}`
 }
 
 /** 학교·학년군·과목명에서 안정적인 id 를 만든다 (자료를 다시 받아도 같은 id) */
