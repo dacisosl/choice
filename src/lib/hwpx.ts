@@ -50,10 +50,10 @@ function setCellText(tc: string, text: string): string {
   const inner = m[2]
   const pOpen = /<hp:p\b[^>]*>/.exec(inner)?.[0] || '<hp:p id="2147483648" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">'
   const charPr = /<hp:run charPrIDRef="(\d+)"/.exec(inner)?.[1] || '0'
-  const seg = /<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/.exec(inner)?.[0] || ''
+  // 줄 나눔 캐시(linesegarray)는 넣지 않는다 — 남아 있으면 한글이 '한 줄로 쓰기'처럼 그린다
   const body = String(text ?? '')
     .split('\n')
-    .map((line) => `${pOpen}<hp:run charPrIDRef="${charPr}">${line ? `<hp:t>${esc(line)}</hp:t>` : ''}</hp:run>${seg}</hp:p>`)
+    .map((line) => `${pOpen}<hp:run charPrIDRef="${charPr}">${line ? `<hp:t>${esc(line)}</hp:t>` : ''}</hp:run></hp:p>`)
     .join('')
   return tc.slice(0, m.index) + m[1] + body + m[3] + tc.slice(m.index + m[0].length)
 }
@@ -103,6 +103,72 @@ export function setDataRows(xml: string, tableIndex: number, firstRow: number, l
   return xml.slice(0, a) + fixed + xml.slice(b)
 }
 
+/**
+ * 쓰지 않는 열을 아예 없앤다 (출판사 3곳이면 3칸만 남게).
+ * 없앤 열의 너비는 `absorb` 로 준 열들이 나눠 가져 표 전체 너비는 그대로 둔다.
+ * @param remove 없앨 열 번호(원본 기준)
+ * @param absorb 그 너비를 가져갈 열 번호(원본 기준). 그 줄에 없으면 건너뛴다
+ */
+export function dropColumns(xml: string, tableIndex: number, remove: number[], absorb: number[]): string {
+  if (!remove.length) return xml
+  const [a, b] = tableRange(xml, tableIndex)
+  const tbl = xml.slice(a, b)
+  const gone = new Set(remove)
+  /** 원본 열 번호 → 새 열 번호 */
+  const newCol = (col: number) => col - remove.filter((r) => r < col).length
+
+  const rows = splitRows(tbl).map((row) => {
+    const cells = row.match(/<hp:tc\b[\s\S]*?<\/hp:tc>/g) || []
+    const parsed = cells.map((raw) => {
+      const addr = /<hp:cellAddr colAddr="(\d+)" rowAddr="(\d+)"\/>/.exec(raw)
+      const span = /<hp:cellSpan colSpan="(\d+)" rowSpan="(\d+)"\/>/.exec(raw)
+      const size = /<hp:cellSz width="(\d+)" height="(\d+)"\/>/.exec(raw)
+      return {
+        raw,
+        col: addr ? Number(addr[1]) : 0,
+        row: addr ? Number(addr[2]) : 0,
+        colSpan: span ? Number(span[1]) : 1,
+        width: size ? Number(size[1]) : 0,
+      }
+    })
+    // 이 줄에서 없애는 칸(한 칸짜리)의 너비를 모은다
+    let freed = 0
+    const keep = parsed.filter((c) => {
+      if (c.colSpan === 1 && gone.has(c.col)) {
+        freed += c.width
+        return false
+      }
+      return true
+    })
+    const targets = keep.filter((c) => c.colSpan === 1 && absorb.includes(c.col))
+    const share = targets.length ? Math.floor(freed / targets.length) : 0
+    const extra = targets.length ? freed - share * targets.length : 0
+
+    return keep
+      .map((c, i) => {
+        let out = c.raw
+        // 여러 열에 걸친 칸은 없앤 열만큼 걸침 수를 줄인다 (너비는 그대로)
+        if (c.colSpan > 1) {
+          const covered = remove.filter((r) => r >= c.col && r < c.col + c.colSpan).length
+          if (covered) out = out.replace(/<hp:cellSpan colSpan="\d+"/, `<hp:cellSpan colSpan="${c.colSpan - covered}"`)
+        } else if (targets.includes(c)) {
+          const add = share + (c === targets[0] ? extra : 0)
+          out = out.replace(/<hp:cellSz width="\d+"/, `<hp:cellSz width="${c.width + add}"`)
+        }
+        void i
+        return out.replace(/<hp:cellAddr colAddr="\d+"/, `<hp:cellAddr colAddr="${newCol(c.col)}"`)
+      })
+      .join('')
+  })
+
+  const colCnt = Number(/<hp:tbl\b[^>]*colCnt="(\d+)"/.exec(tbl)?.[1] || 0) - remove.length
+  const rebuilt =
+    tbl.slice(0, tbl.indexOf('<hp:tr>')) +
+    rows.map((r) => `<hp:tr>${r}</hp:tr>`).join('') +
+    tbl.slice(tbl.lastIndexOf('</hp:tr>') + 8)
+  return xml.slice(0, a) + rebuilt.replace(/(<hp:tbl\b[^>]*?)colCnt="\d+"/, `$1colCnt="${colCnt}"`) + xml.slice(b)
+}
+
 // ───────────── 본문 문단 다루기 ─────────────
 
 /** 표 바깥 문단 중 글자가 `find` 로 시작하는 첫 문단의 글자를 바꾼다 */
@@ -114,9 +180,8 @@ export function replaceParagraph(xml: string, find: string, text: string): strin
     const plain = (para.match(/<hp:t>([\s\S]*?)<\/hp:t>/g) || []).map((t) => t.replace(/<[^>]+>/g, '')).join('')
     if (!plain.replace(/\s/g, '').startsWith(find.replace(/\s/g, ''))) continue
     const charPr = /<hp:run charPrIDRef="(\d+)"/.exec(para)?.[1] || '0'
-    const seg = /<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/.exec(para)?.[0] || ''
     const pOpen = /<hp:p\b[^>]*>/.exec(para)?.[0] as string
-    const next = `${pOpen}<hp:run charPrIDRef="${charPr}"><hp:t>${esc(text)}</hp:t></hp:run>${seg}</hp:p>`
+    const next = `${pOpen}<hp:run charPrIDRef="${charPr}"><hp:t>${esc(text)}</hp:t></hp:run></hp:p>`
     return xml.slice(0, m.index) + next + xml.slice(m.index + para.length)
   }
   return xml

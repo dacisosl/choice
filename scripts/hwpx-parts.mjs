@@ -75,8 +75,15 @@ mkdirSync(OUT, { recursive: true })
 // 1) 머리말(글꼴·문단모양·테두리 모음) — 세 서식이 함께 쓴다
 writeFileSync(`${OUT}/header.xml`, dec('Contents/header.xml'))
 
+/**
+ * 줄 나눔 캐시(linesegarray) 를 뺀다.
+ * 한글이 이 캐시를 믿고 그리기 때문에, 칸의 글자를 바꾸면 '한 줄로 쓰기' 를 켠 것처럼
+ * 한 줄에 눌러 담겨 나온다. 캐시가 없으면 한글이 문서를 열 때 스스로 다시 계산한다.
+ */
+const dropLineSegs = (xml) => xml.replace(/<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/g, '')
+
 // 2) 서식1 — section1.xml 이 통째로 서식1 이다
-writeFileSync(`${OUT}/form1.xml`, dec('Contents/section1.xml'))
+writeFileSync(`${OUT}/form1.xml`, dropLineSegs(dec('Contents/section1.xml')))
 
 // 3) 서식2·서식3 — section2.xml 에서 잘라 낸다
 const sec2 = dec('Contents/section2.xml')
@@ -99,8 +106,8 @@ function cut(from, to) {
   body[0] = body[0].replace(/^(<hp:p\b[^>]*>)/, `$1${secRun[0]}`)
   return `${head}${body.join('')}</hs:sec>`
 }
-writeFileSync(`${OUT}/form2.xml`, cut(i2, i3))
-writeFileSync(`${OUT}/form3.xml`, cut(i3, i4))
+writeFileSync(`${OUT}/form2.xml`, dropLineSegs(cut(i2, i3)))
+writeFileSync(`${OUT}/form3.xml`, dropLineSegs(cut(i3, i4)))
 
 // 4) 나머지 뼈대 파일 (앱이 그대로 다시 넣는다)
 for (const n of ['version.xml', 'settings.xml', 'META-INF/container.xml', 'META-INF/container.rdf']) {

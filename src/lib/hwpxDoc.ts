@@ -10,7 +10,7 @@
  */
 import type { Criterion, DocPublisher, Evaluation, Person, SummaryMember, SummaryRecommend } from '../types'
 import { columnTotal, computeSummary, rankLabel } from './scoring'
-import { buildHwpx, download, fillTable, loadPart, replaceParagraph, setDataRows, type CellFill } from './hwpx'
+import { buildHwpx, download, dropColumns, fillTable, loadPart, replaceParagraph, setDataRows, type CellFill } from './hwpx'
 
 /** 원본 서식이 감당하는 크기 */
 export const LIMITS = { publishers: 16, members: 7 }
@@ -40,7 +40,7 @@ async function form1(d: Form1Data): Promise<string> {
   const opinionRow = sumRow + 1 // 종합의견 줄
 
   const fills: CellFill[] = []
-  // 0행 출판사 번호 · 1행 출판사명 (쓰지 않는 칸은 비운다)
+  // 0행 출판사 번호 · 1행 출판사명 (쓰지 않는 칸은 비운다 — 열 자체는 아래에서 없앤다)
   for (let i = 0; i < LIMITS.publishers; i++) {
     fills.push({ row: 0, col: COL0 + i, text: i < pubs.length ? String(i + 1) : '' })
     fills.push({ row: 1, col: COL0 + i, text: i < pubs.length ? pubs[i].name : '' })
@@ -65,6 +65,11 @@ async function form1(d: Form1Data): Promise<string> {
   fills.push({ row: opinionRow, col: 0, text: `<종합의견 및 추천의견>\n${d.summaryOpinion || ''}` })
 
   xml = fillTable(xml, 0, fills)
+  // 쓰지 않는 출판사 열은 없앤다. 남은 너비는 평가기준 열과 출판사 열들이 고르게 나눠 가져
+  // 화면·PDF 와 비슷한 비율이 된다 (출판사가 적을수록 점수 칸이 넓어진다)
+  const spare = []
+  for (let i = pubs.length; i < LIMITS.publishers; i++) spare.push(COL0 + i)
+  xml = dropColumns(xml, 0, spare, [1, ...pubs.map((_, i) => COL0 + i)])
   xml = replaceParagraph(xml, '과  목', `과  목 : ${d.subjectName} 과      위  원 : ${d.teacherName}        (인)`)
   return xml
 }
@@ -129,6 +134,10 @@ async function form2(d: Form2Data): Promise<string> {
     fills.push({ row, col: 10, text: members.length ? rankLabel(computed.ranks[p.id], computed.tieCounts[computed.ranks[p.id]]) : '' })
   })
   xml = fillTable(xml, 0, fills)
+  // 쓰지 않는 위원 열은 없애고, 그 너비는 남은 위원 열들이 나눠 가진다
+  const spare = []
+  for (let i = members.length; i < LIMITS.members; i++) spare.push(1 + i)
+  xml = dropColumns(xml, 0, spare, members.map((_, i) => 1 + i))
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
   xml = replaceParagraph(xml, '작성자', sign('작성자', d.writer))
   xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker))
