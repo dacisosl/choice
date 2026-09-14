@@ -11,3 +11,14 @@ export function PrinterIcon() {
     </svg>
   )
 }
+
+/** 한글(hwpx) 문서 */
+export function HwpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8l-5-5Z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 12v5M13.5 12v5M9 14.5h4.5" />
+    </svg>
+  )
+}

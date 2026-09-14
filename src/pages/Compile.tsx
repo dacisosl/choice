@@ -6,6 +6,7 @@ import { lsGet, lsSet } from '../store/storage'
 import { columnTotal, computeSummary, criteriaFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheetsInTurn } from '../lib/print'
+import { hwpxWarning, saveCompileHwpx } from '../lib/hwpxDoc'
 import { importMemberFiles, squeezeName, type ImportProgress } from '../lib/pdfImport'
 import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
@@ -14,7 +15,7 @@ import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SheetFit } from '../components/SheetFit'
-import { PrinterIcon } from '../components/Icons'
+import { HwpIcon, PrinterIcon } from '../components/Icons'
 import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['점수표 올리기', '총괄표 확인', '인쇄·저장']
@@ -125,6 +126,29 @@ export function Compile({ go }: { go: (h: string) => void }) {
         ])
       },
     })
+  }
+
+  /** 교육청 원본 한글 서식(서식2 + 서식3)에 값을 채워 .hwpx 로 내려받는다 */
+  const saveHwpx = async () => {
+    if (!sum) return
+    const warn = hwpxWarning(sum.publishers.length, sum.members.length)
+    if (warn) setMsg({ type: 'warn', text: warn })
+    try {
+      await saveCompileHwpx({
+        subjectName: sum.subjectName,
+        publishers: sum.publishers,
+        members: sum.members,
+        matrix: sum.matrix,
+        decimals: master.settings.averageDecimals,
+        writer: sum.writer,
+        checker: sum.checker,
+        recommendDoc: sum.recommendDoc,
+        recommendWriter: sum.recommendWriter,
+        recommendChecker: sum.recommendChecker,
+      })
+    } catch (e) {
+      setMsg({ type: 'error', text: `한글 파일을 만들지 못했습니다. ${(e as Error).message}` })
+    }
   }
 
   // ───────────── 파일 올리기 ─────────────
@@ -650,12 +674,15 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   <button className="btn primary" onClick={askPrint}>
                     <PrinterIcon /> 인쇄 · PDF 저장
                   </button>
+                  <button className="btn soft" onClick={saveHwpx}>
+                    <HwpIcon /> 한글(hwpx) 저장
+                  </button>
                   <button className="btn" onClick={exportJson}>
                     JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>평가 총괄표</b>와 <b>추천 의견서</b>를 각각 저장합니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>평가 총괄표</b>와 <b>추천 의견서</b>를 각각 저장합니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form2Sheet

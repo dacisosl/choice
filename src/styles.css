@@ -23,6 +23,8 @@
   --green: #2f5d4b;
   --green-soft: #e3eee6;
   --radius: 14px;
+  /* 아래쪽 안내 줄(방침·약관) 높이 — 한 화면에 맞추는 계산에 함께 쓴다 */
+  --foot-h: 30px;
   --radius-sm: 10px;
   --shadow-soft: 0 1px 2px rgba(40, 50, 40, 0.05), 0 10px 30px rgba(40, 50, 40, 0.08);
   font-family: Pretendard, 'Apple SD Gothic Neo', 'Malgun Gothic', '맑은 고딕', system-ui, sans-serif;
@@ -98,7 +100,7 @@ input[type='checkbox'] { accent-color: var(--primary); }
 .btn.ghost:hover { background: rgba(0, 0, 0, 0.04); }
 
 /* 레이아웃 */
-.app { max-width: 1100px; margin: 0 auto; padding: 0 20px 18px; }
+.app { max-width: 1100px; margin: 0 auto; padding: 0 20px 0; }
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   height: 62px; margin: 0 -20px 10px; padding: 0 20px;
@@ -297,6 +299,17 @@ td.num { text-align: center; }
 .opt-group label input { margin-top: 3px; }
 .opt-group label.neg { color: var(--amber); }
 
+/* 아래쪽 안내 줄 (개인정보처리방침·이용약관·문의) */
+.site-foot {
+  max-width: 1100px; margin: 0 auto; padding: 5px 20px 7px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12px; line-height: 1.5; color: var(--muted);
+}
+.site-foot a { color: var(--text-2); text-decoration: none; font-weight: 600; }
+.site-foot a:hover { color: var(--primary); text-decoration: underline; }
+.site-foot-note { flex: 1 1 auto; }
+@media (max-width: 760px) { .site-foot { justify-content: center; text-align: center; padding-bottom: 16px; } .site-foot-note { flex-basis: 100%; } }
+
 /* ─────────── 사용 설명 (캐러셀) ─────────── */
 .guide { padding-bottom: 8px; }
 .guide-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
@@ -406,7 +419,7 @@ td.num { text-align: center; }
 .form-sheet .diag .a { position: absolute; left: 6px; top: 3px; font-size: 9.5pt; }
 .form-sheet .diag .b { position: absolute; right: 6px; bottom: 3px; font-size: 9.5pt; }
 .form-sheet .diag::after { content: ''; position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #000 50%, transparent calc(50% + 0.5px)); }
-.sheet-wrap { overflow-x: auto; padding: 4px 4px 12px; }
+.sheet-wrap { overflow-x: auto; padding: 4px 4px 4px; }
 
 .preview-toolbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
 
@@ -445,7 +458,7 @@ td.num { text-align: center; }
 .app:has(.work-layout) { max-width: 1480px; }
 .work-layout { display: grid; grid-template-columns: 312px minmax(0, 1fr); gap: 16px; align-items: start; }
 .work-side { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 12px;
-  max-height: calc(100vh - 96px); overflow-y: auto; padding-right: 4px; }
+  max-height: calc(100vh - 96px - var(--foot-h)); overflow-y: auto; padding-right: 4px; }
 .work-main { min-width: 0; }
 .side-card { padding: 16px 16px 18px; margin-bottom: 0; }
 .side-card > h3 { margin: 0 0 10px; font-size: 14px; }
@@ -459,7 +472,7 @@ td.num { text-align: center; }
 .dropzone.sm { padding: 14px 12px; border-radius: 10px; }
 .dropzone.sm p { margin: 0 0 8px; font-size: 12.5px; }
 .empty-hint { color: var(--text-2); }
-.work-main .scroll-x { max-height: calc(100vh - 230px); overflow-y: auto; }
+.work-main .scroll-x { max-height: calc(100vh - 230px - var(--foot-h)); overflow-y: auto; }
 /* 서식을 화면 크기에 맞춰 줄여 보여 준다 (인쇄 크기는 그대로) */
 .sheet-fit { overflow: hidden; }
 .sheet-fit.scrolls { overflow-y: auto; overflow-x: hidden; }
@@ -659,7 +672,7 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
 }
 
 @media (max-width: 420px) {
-  .app { padding: 0 10px 12px; }
+  .app { padding: 0 10px 0; }
   .guide-stage { padding: 14px 12px; }
   .guide-nav > .btn { padding: 0 12px; font-size: 13px; }
   .topbar { margin: 0 -10px 8px; padding: 8px 10px; }

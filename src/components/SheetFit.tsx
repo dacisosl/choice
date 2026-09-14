@@ -38,7 +38,9 @@ export function SheetFit({ children, bottomGap = 68, minScale = 0.62, fitHeight 
     const narrow = window.innerWidth <= NARROW
     const floor = narrow ? NARROW_MIN_SCALE : minScale
     const availW = o.clientWidth
-    const availH = window.innerHeight - o.getBoundingClientRect().top - bottomGap
+    // 아래쪽 안내 줄(방침·약관 링크)도 자리를 차지하므로 빼고 계산한다
+    const foot = document.querySelector('.site-foot')?.getBoundingClientRect().height || 0
+    const availH = window.innerHeight - o.getBoundingClientRect().top - bottomGap - foot
     const next = Math.max(floor, Math.min(1, availW / natW, fitHeight && !narrow ? availH / natH : Number.POSITIVE_INFINITY))
     setScale(next)
     setBox({ w: natW * next, h: natH * next })

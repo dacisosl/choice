@@ -6,13 +6,14 @@ import { lsGet, lsSet } from '../store/storage'
 import { buildDraftScores, checkScoreEdit, criteriaFor, publishersFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheetsInTurn } from '../lib/print'
+import { hwpxWarning, savePersonalHwpx } from '../lib/hwpxDoc'
 import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SheetFit } from '../components/SheetFit'
-import { PrinterIcon } from '../components/Icons'
+import { HwpIcon, PrinterIcon } from '../components/Icons'
 import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['선정 평가표', '추천 의견서', '인쇄·저장']
@@ -260,6 +261,18 @@ export function Personal({ go }: { go: (h: string) => void }) {
         ])
       },
     })
+  }
+
+  /** 교육청 원본 한글 서식(서식1 + 서식3)에 값을 채워 .hwpx 로 내려받는다 */
+  const saveHwpx = async () => {
+    if (!ev) return
+    const warn = hwpxWarning(ev.publishers.length)
+    if (warn) setMsg({ type: 'warn', text: warn })
+    try {
+      await savePersonalHwpx(ev)
+    } catch (e) {
+      setMsg({ type: 'error', text: `한글 파일을 만들지 못했습니다. ${(e as Error).message}` })
+    }
   }
 
   const goNext = () => {
@@ -536,12 +549,15 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   <button className="btn primary" onClick={askPrint}>
                     <PrinterIcon /> 인쇄 · PDF 저장
                   </button>
+                  <button className="btn soft" onClick={saveHwpx}>
+                    <HwpIcon /> 한글(hwpx) 저장
+                  </button>
                   <button className="btn" onClick={exportJson}>
                     JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>선정 평가표(가로 1쪽)</b>와 <b>추천 의견서(세로 1쪽)</b>를 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>선정 평가표(가로 1쪽)</b>와 <b>추천 의견서(세로 1쪽)</b>를 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form1Sheet
