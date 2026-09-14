@@ -154,7 +154,7 @@ export function OpinionModal({
                   ))}
                 </select>
               )}
-              <button className="btn primary" onClick={generate} disabled={busy || !!notice}>
+              <button className="btn accent" onClick={generate} disabled={busy || !!notice}>
                 {busy ? '생성 중…' : text ? '다시 생성' : '의견 생성'}
               </button>
             </div>

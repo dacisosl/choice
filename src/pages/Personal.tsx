@@ -5,13 +5,14 @@ import { fmtDate, useAppData } from '../store/useAppData'
 import { lsGet, lsSet } from '../store/storage'
 import { buildDraftScores, checkScoreEdit, criteriaFor, publishersFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
-import { printSheets } from '../lib/print'
+import { printSheetsInTurn } from '../lib/print'
 import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
 import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SheetFit } from '../components/SheetFit'
+import { PrinterIcon } from '../components/Icons'
 import { NoticeModal } from '../components/NoticeModal'
 
 const STEPS = ['선정 평가표', '추천 의견서', '인쇄·저장']
@@ -239,21 +240,24 @@ export function Personal({ go }: { go: (h: string) => void }) {
    * 인쇄 전에 책임·검토를 한 번 짚어 준다.
    * 평가표와 추천 의견서는 따로 저장한다 — 총괄 선생님이 위원들의 평가표만 모아 올리기 쉽도록.
    */
-  const askPrint = (kind: 'form1' | 'form3') => {
+  const askPrint = () => {
     if (!ev) return
-    const what = kind === 'form1' ? '선정 평가표' : '추천 의견서'
     setNotice({
-      title: `${what}를 인쇄하기 전에 확인해 주세요`,
+      title: '인쇄하기 전에 확인해 주세요',
       tone: 'info',
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
         '자동으로 만든 초안입니다. 점수와 문장이 실제 검토 결과와 맞는지 반드시 확인하고 고친 뒤 제출해 주세요.',
         '이름 · 과목 · 출판사 · 순위가 맞는지 다시 한 번 살펴 주세요.',
+        '인쇄 창이 두 번 열립니다. 먼저 선정 평가표(가로 1쪽), 이어서 추천 의견서(세로 1쪽)를 각각 저장해 주세요.',
       ],
       confirmLabel: '확인했습니다, 인쇄',
       onConfirm: () => {
         setNotice(null)
-        printSheets(`.form-sheet.${kind}`, `${what}_${ev.subjectName}_${ev.teacherName}`)
+        void printSheetsInTurn([
+          { selector: '.form-sheet.form1', title: `선정 평가표_${ev.subjectName}_${ev.teacherName}` },
+          { selector: '.form-sheet.form3', title: `추천 의견서_${ev.subjectName}_${ev.teacherName}` },
+        ])
       },
     })
   }
@@ -529,18 +533,15 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={() => askPrint('form1')}>
-                    평가표 인쇄·PDF
-                  </button>
-                  <button className="btn primary" onClick={() => askPrint('form3')}>
-                    추천 의견서 인쇄·PDF
+                  <button className="btn primary" onClick={askPrint}>
+                    <PrinterIcon /> 인쇄 · PDF 저장
                   </button>
                   <button className="btn" onClick={exportJson}>
                     JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 평가표(가로)와 추천 의견서(세로)는 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>선정 평가표(가로 1쪽)</b>와 <b>추천 의견서(세로 1쪽)</b>를 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form1Sheet

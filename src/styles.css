@@ -86,6 +86,9 @@ input[type='checkbox'] { accent-color: var(--primary); }
 .btn.primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); }
 .btn.primary:hover { background: var(--primary-deep); border-color: var(--primary-deep); }
 .btn.soft { background: var(--primary-soft); color: var(--primary); border-color: var(--primary-soft-line); }
+/* 문장을 만드는 단추 — [적용]·[확인] 같은 초록 계열과 확실히 구분되도록 다른 색을 쓴다 */
+.btn.accent { background: #8a5a12; color: #fff; border-color: #8a5a12; }
+.btn.accent:hover { background: #71490d; border-color: #71490d; }
 .btn.soft:hover { background: #d3e1d8; }
 .btn.danger { color: var(--red); border-color: #e6c3bb; }
 .btn.danger:hover { background: var(--red-soft); }
@@ -384,9 +387,12 @@ td.num { text-align: center; }
 .form-sheet .form-head { display: flex; justify-content: space-between; font-size: 11.5pt; margin-bottom: 6px; }
 .form-sheet .form-head .right { text-align: right; }
 .form-sheet table.form { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.form-sheet table.form th, .form-sheet table.form td { border: 1px solid #000; padding: 4px 5px; font-size: 10.5pt; vertical-align: middle; word-break: keep-all; }
+.form-sheet table.form th, .form-sheet table.form td { border: 1px solid #000; padding: 4px 5px; font-size: 10.5pt; vertical-align: middle; word-break: keep-all; overflow-wrap: anywhere; }
 .form-sheet table.form th { background: #e5e5e5; font-weight: 600; text-align: center; }
 .form-sheet table.form td.c { text-align: center; }
+/* 출판사명은 길어서 고르는 칸에 넣으면 인쇄할 때 잘린다. 인쇄에는 글자를 내보낸다 */
+.form-sheet td.pub-cell .pub-print { display: none; }
+.form-sheet td.pub-cell .pub-pick { width: 100%; height: auto; padding: 2px 16px 2px 2px; border: none; background-color: transparent; text-align: center; font-family: inherit; font-size: inherit; color: inherit; }
 .form-sheet table.form td.opinion { height: 80px; vertical-align: top; text-align: left; white-space: pre-wrap; line-height: 1.6; }
 .form-sheet table.form td.opinion.tall { min-height: 110px; }
 .form-sheet .sign-block { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 11pt; }
@@ -696,6 +702,9 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .form-sheet.landscape { page: landscape; }
   .form-sheet table.form th { background: #e5e5e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .form-sheet table.form th, .form-sheet table.form td { font-size: 10pt; }
+  /* 고르는 칸(select)은 이름이 길면 잘리므로 인쇄에는 글자만 내보낸다 */
+  .form-sheet td.pub-cell .pub-pick { display: none !important; }
+  .form-sheet td.pub-cell .pub-print { display: block !important; line-height: 1.35; }
   .form-sheet table.form { break-inside: auto; }
   td.editable:hover { background: inherit; }
 }

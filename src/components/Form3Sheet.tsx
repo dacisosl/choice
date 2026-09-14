@@ -42,7 +42,7 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
       <table className="form">
         <colgroup>
           <col style={{ width: 52 }} />
-          <col style={{ width: 120 }} />
+          <col style={{ width: 136 }} />
           <col />
         </colgroup>
         <thead>
@@ -56,22 +56,22 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
           {rows.map((r) => (
             <tr key={r.rank}>
               <td className="c">{r.rank}</td>
-              <td className="c">
+              <td className="c pub-cell">
                 {readOnly || !onPubChange ? (
                   pubName(r.pubId)
                 ) : (
-                  <select
-                    value={r.pubId || ''}
-                    onChange={(e) => onPubChange(r.rank, e.target.value)}
-                    style={{ width: '100%', border: 'none', background: 'transparent', textAlign: 'center', fontFamily: 'inherit', fontSize: 'inherit' }}
-                  >
-                    <option value="">-</option>
-                    {publishers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <>
+                    {/* 고르는 칸은 이름이 길면 잘려 인쇄된다. 인쇄할 때는 아래 글자만 나온다 */}
+                    <span className="pub-print">{pubName(r.pubId)}</span>
+                    <select className="pub-pick" value={r.pubId || ''} onChange={(e) => onPubChange(r.rank, e.target.value)}>
+                      <option value="">-</option>
+                      {publishers.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </>
                 )}
               </td>
               <TextCell
