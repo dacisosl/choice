@@ -107,6 +107,9 @@ export function Start({ go }: { go: (h: string) => void }) {
         <button className="chip-pill" onClick={() => go('compile')}>
           <span className="chip-sub">총괄 작성 교사라면</span> 평가총괄표 작성 <span aria-hidden="true">→</span>
         </button>
+        <button className="hero-guide" onClick={() => go('guide')}>
+          <span aria-hidden="true">▶</span> 처음이신가요? <b>1분 사용법 보기</b>
+        </button>
       </div>
     </section>
   )

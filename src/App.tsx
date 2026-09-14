@@ -3,6 +3,7 @@ import { Start } from './pages/Start'
 import { Personal } from './pages/Personal'
 import { Compile } from './pages/Compile'
 import { Settings } from './pages/Settings'
+import { Guide } from './pages/Guide'
 
 const BookIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -24,12 +25,16 @@ function Shell() {
         </div>
         <div id="topbar-slot" className="topbar-slot" />
         <div className="meta">
+          <button className={`btn sm ghost ${route === 'guide' ? 'active' : ''}`} onClick={() => go('guide')}>
+            사용법
+          </button>
           <button className={`btn sm ghost ${route === 'settings' ? 'active' : ''}`} onClick={() => go('settings')}>
             설정
           </button>
         </div>
       </header>
       {route === '' && <Start go={go} />}
+      {route === 'guide' && <Guide go={go} />}
       {route === 'personal' && <Personal go={go} />}
       {route === 'compile' && <Compile go={go} />}
       {(route === 'settings' || route === 'admin') && <Settings go={go} />}
