@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Criterion, DocPublisher } from '../types'
 import { columnTotal } from '../lib/scoring'
 import { NumberCell, TextCell } from './EditableCell'
@@ -31,6 +32,8 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
   }
 
   const pubColWidth = N ? Math.max(48, Math.floor(520 / N)) : 60
+  /** 지금 고치는 중인 점수 칸 (합계 미리 보기용) */
+  const [draft, setDraft] = useState<{ pubId: string; critId: string; value: number } | null>(null)
 
   return (
     <div className={`form-sheet form1 landscape ${readOnly ? 'readonly' : ''}`}>
@@ -99,6 +102,7 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
                   max={c.points}
                   readOnly={readOnly}
                   onChange={(v) => onScoreChange?.(p.id, c.id, v)}
+                  onDraft={(v) => setDraft(v === null ? null : { pubId: p.id, critId: c.id, value: v })}
                 />
               ))}
               {N === 0 && <td />}
@@ -109,11 +113,17 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
             <td className="c" style={{ fontWeight: 600 }}>
               {totalPoints}
             </td>
-            {publishers.map((p) => (
-              <td key={p.id} className="c" style={{ fontWeight: 600 }}>
-                {columnTotal(scores[p.id], criteria)}
-              </td>
-            ))}
+            {publishers.map((p) => {
+              const total = columnTotal(scores[p.id], criteria)
+              // 어느 칸을 고치는 중이면 그 값을 넣은 합계를 미리 보여 준다 (확정되면 원래 계산으로 돌아간다)
+              const pending = draft && draft.pubId === p.id
+              const shown = pending ? total - (Number(scores[p.id]?.[draft.critId]) || 0) + draft.value : total
+              return (
+                <td key={p.id} className={`c ${pending ? 'pending' : ''}`} style={{ fontWeight: 600 }}>
+                  {shown}
+                </td>
+              )
+            })}
             {N === 0 && <td />}
           </tr>
           <tr>

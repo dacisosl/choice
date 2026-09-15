@@ -6,11 +6,13 @@ interface NumProps {
   min?: number
   readOnly?: boolean
   onChange: (v: number) => void
+  /** 입력 중인 값(확정 전). 합계를 미리 보여 주는 데 쓴다. 편집이 끝나면 null */
+  onDraft?: (v: number | null) => void
   className?: string
 }
 
-/** 숫자 셀: 클릭 → 입력 컴포넌트로 교체 */
-export function NumberCell({ value, max, min = 0, readOnly, onChange, className }: NumProps) {
+/** 숫자 셀: 클릭 → 입력 컴포넌트로 교체. 값은 Enter 나 포커스 이동으로 확정된다 */
+export function NumberCell({ value, max, min = 0, readOnly, onChange, onDraft, className }: NumProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value))
   const ref = useRef<HTMLInputElement>(null)
@@ -22,10 +24,14 @@ export function NumberCell({ value, max, min = 0, readOnly, onChange, className 
     }
   }, [editing, value])
   const over = max !== undefined && value > max
+  const stop = () => {
+    setEditing(false)
+    onDraft?.(null)
+  }
   const commit = () => {
     const n = Number(draft)
-    if (!Number.isNaN(n)) onChange(Math.max(min, n))
-    setEditing(false)
+    if (draft.trim() !== '' && !Number.isNaN(n)) onChange(Math.max(min, n))
+    stop()
   }
   return (
     <td
@@ -40,11 +46,16 @@ export function NumberCell({ value, max, min = 0, readOnly, onChange, className 
           type="number"
           value={draft}
           min={min}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            // 화살표 단추·마우스 휠·직접 입력 모두 합계에 바로 비쳐 보이게 알린다
+            const n = Number(e.target.value)
+            onDraft?.(e.target.value.trim() === '' || Number.isNaN(n) ? null : Math.max(min, n))
+          }}
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') commit()
-            if (e.key === 'Escape') setEditing(false)
+            if (e.key === 'Escape') stop()
           }}
         />
       ) : (

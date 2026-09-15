@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { DocPublisher, Person, SummaryMember } from '../types'
 import { computeSummary, rankLabel } from '../lib/scoring'
 import { NumberCell } from './EditableCell'
@@ -20,8 +21,14 @@ interface Props {
 export function Form2Sheet({ subjectName, publishers, members, matrix, headerMode, decimals, writer, checker, readOnly, sortByAverage, onCellChange }: Props) {
   const memberIds = members.map((m) => m.id)
   const pubIds = publishers.map((p) => p.id)
-  const computed = computeSummary(matrix, pubIds, memberIds, decimals)
-  const rows = sortByAverage ? [...publishers].sort((a, b) => computed.averages[b.id] - computed.averages[a.id]) : publishers
+  /** 지금 고치는 중인 점수 칸 (총점·평균·순위 미리 보기용) */
+  const [draft, setDraft] = useState<{ pubId: string; memberId: string; value: number } | null>(null)
+  const saved = computeSummary(matrix, pubIds, memberIds, decimals)
+  // 고치는 중인 값을 넣어 다시 계산해 보여 준다. 줄 순서는 저장된 값 기준으로 두어 입력 중에 줄이 뛰지 않게 한다
+  const computed = draft
+    ? computeSummary({ ...matrix, [draft.pubId]: { ...(matrix[draft.pubId] || {}), [draft.memberId]: draft.value } }, pubIds, memberIds, decimals)
+    : saved
+  const rows = sortByAverage ? [...publishers].sort((a, b) => saved.averages[b.id] - saved.averages[a.id]) : publishers
   const M = members.length
 
   return (
@@ -71,12 +78,13 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
                   value={Number(matrix[p.id]?.[m.id]) || 0}
                   readOnly={readOnly}
                   onChange={(v) => onCellChange?.(p.id, m.id, v)}
+                  onDraft={(v) => setDraft(v === null ? null : { pubId: p.id, memberId: m.id, value: v })}
                 />
               ))}
               {M === 0 && <td />}
-              <td className="c">{computed.totals[p.id]}</td>
-              <td className="c">{M ? computed.averages[p.id].toFixed(decimals) : ''}</td>
-              <td className="c">{M ? rankLabel(computed.ranks[p.id], computed.tieCounts[computed.ranks[p.id]]) : ''}</td>
+              <td className={`c ${draft && draft.pubId === p.id ? 'pending' : ''}`}>{computed.totals[p.id]}</td>
+              <td className={`c ${draft && draft.pubId === p.id ? 'pending' : ''}`}>{M ? computed.averages[p.id].toFixed(decimals) : ''}</td>
+              <td className={`c ${draft ? 'pending' : ''}`}>{M ? rankLabel(computed.ranks[p.id], computed.tieCounts[computed.ranks[p.id]]) : ''}</td>
             </tr>
           ))}
           {rows.length === 0 && (
