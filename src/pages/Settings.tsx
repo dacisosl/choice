@@ -521,7 +521,7 @@ function CriteriaTab() {
     <div>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
       <div className="card">
-        <p className="muted small">평가기준은 이 컴퓨터에만 저장됩니다. 학교 전체에 같은 기준을 쓰려면 [문서·AI 설정]의 내보내기 파일을 나눠 주세요.</p>
+        <p className="muted small">평가기준은 이 컴퓨터에만 저장됩니다. 고치면 작성 중인 평가표와 저장된 평가표를 다시 열 때 새 기준이 바로 적용됩니다.</p>
         <div className="row">
           <label className="field">
             대상

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { DocPublisher, Evaluation, RecommendItem, SchoolLevel } from '../types'
+import type { DocPublisher, Evaluation, RecommendItem, SchoolLevel, Criterion } from '../types'
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
 import { lsGet, lsSet } from '../store/storage'
@@ -116,12 +116,21 @@ export function Personal({ go }: { go: (h: string) => void }) {
       prev.publishers.length === namedPubs.length &&
       prev.publishers.every((p, i) => p.id === namedPubs[i].id && p.name === namedPubs[i].name)
     const ranksSame = !!prev && prev.ranks.join('|') === ranks.join('|')
-    if (sameShape && ranksSame) return
+    // 설정에서 평가기준(영역·문구·배점)을 고치면 이미 만든 평가표에도 바로 반영해야 한다
+    const critSig = (list: Criterion[]) => list.map((c) => `${c.id}|${c.area}|${c.text}|${c.points}`).join('\n')
+    const scoreSig = (list: Criterion[]) => list.map((c) => `${c.id}|${c.points}`).join('\n')
+    const critSame = !!prev && critSig(prev.criteria) === critSig(criteria)
+    if (sameShape && ranksSame && critSame) return
 
     const base = { subjectId: subject.id, teacherName: teacherName.trim(), ranks }
     const scores = buildDraftScores(master.settings, criteria, namedPubs, base)
-    // 순위가 그대로면(출판사만 늘거나 이름이 바뀌면) 손으로 고친 점수를 살린다
-    if (prev && ranksSame) for (const p of namedPubs) if (prev.scores[p.id]) scores[p.id] = prev.scores[p.id]
+    // 순위가 그대로이고 기준의 항목·배점도 그대로면(문구만 바뀌었거나 출판사만 늘었으면) 손으로 고친 점수를 살린다.
+    // 항목이나 배점이 바뀌었으면 옛 점수가 새 배점과 어긋나므로 초안을 다시 뽑는다.
+    const keepScores = !!prev && ranksSame && scoreSig(prev.criteria) === scoreSig(criteria)
+    if (prev && keepScores) for (const p of namedPubs) if (prev.scores[p.id]) scores[p.id] = prev.scores[p.id]
+    if (prev && sameShape && ranksSame && !keepScores) {
+      setMsg({ type: 'info', text: '설정의 평가기준(항목·배점)이 바뀌어 점수 초안을 새 기준으로 다시 만들었습니다. 점수를 확인해 주세요.' })
+    }
 
     const recommend: RecommendItem[] = [1, 2, 3].map((r) => {
       const old = prev?.recommend.find((x) => x.rank === r)
