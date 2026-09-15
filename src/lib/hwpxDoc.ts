@@ -17,8 +17,11 @@ export const LIMITS = { publishers: 16, members: 7 }
 
 /** mm → HWPUNIT (1/7200 인치) */
 const mm = (v: number) => Math.round(v * 283.46)
-/** 편집 용지 여백을 좌우 15mm 로 두었을 때의 본문 너비 (scripts/hwpx-parts.mjs 와 맞춘다) */
-const TEXT_W = { landscape: mm(297 - 30), portrait: mm(210 - 30) }
+/**
+ * 표 너비. 편집 용지 여백을 좌우 15mm 로 두었을 때의 본문 너비(scripts/hwpx-parts.mjs 와 맞춘다)에서
+ * 표 바깥 여백(양쪽 0.5mm)과 안전분 0.5mm 를 뺀다 — 딱 맞추면 오른쪽이 본문을 살짝 넘어간다
+ */
+const TEXT_W = { landscape: mm(297 - 30 - 1.5), portrait: mm(210 - 30 - 1.5) }
 
 const sign = (title: string, who: Person) => `  ${title}           직 ${who.position || ''}        성명 ${who.name || ''}          (인)`
 

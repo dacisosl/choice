@@ -144,8 +144,13 @@ export function dropColumns(xml: string, tableIndex: number, remove: number[], a
     const share = targets.length ? Math.floor(freed / targets.length) : 0
     const extra = targets.length ? freed - share * targets.length : 0
 
+    // 줄의 맨 오른쪽 칸이 없어졌으면, 그 칸의 테두리(바깥쪽 굵은 선)를 새 맨 오른쪽 칸이 물려받는다
+    const lastBefore = parsed.reduce((m, c) => (c.col > m.col ? c : m), parsed[0])
+    const lastAfter = keep.reduce((m, c) => (c.col > m.col ? c : m), keep[0])
+    const edgeFill = lastBefore && lastAfter && lastBefore !== lastAfter ? /borderFillIDRef="(\d+)"/.exec(lastBefore.raw)?.[1] : undefined
+
     return keep
-      .map((c, i) => {
+      .map((c) => {
         let out = c.raw
         // 여러 열에 걸친 칸은 없앤 열만큼 걸침 수를 줄인다 (너비는 그대로)
         if (c.colSpan > 1) {
@@ -155,7 +160,7 @@ export function dropColumns(xml: string, tableIndex: number, remove: number[], a
           const add = share + (c === targets[0] ? extra : 0)
           out = out.replace(/<hp:cellSz width="\d+"/, `<hp:cellSz width="${c.width + add}"`)
         }
-        void i
+        if (edgeFill && c === lastAfter) out = out.replace(/(<hp:tc\b[^>]*?)borderFillIDRef="\d+"/, `$1borderFillIDRef="${edgeFill}"`)
         return out.replace(/<hp:cellAddr colAddr="\d+"/, `<hp:cellAddr colAddr="${newCol(c.col)}"`)
       })
       .join('')
