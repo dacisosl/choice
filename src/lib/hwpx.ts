@@ -169,6 +169,87 @@ export function dropColumns(xml: string, tableIndex: number, remove: number[], a
   return xml.slice(0, a) + rebuilt.replace(/(<hp:tbl\b[^>]*?)colCnt="\d+"/, `$1colCnt="${colCnt}"`) + xml.slice(b)
 }
 
+/** 표의 칸을 { 원문, 열, 줄, 걸침 } 으로 읽는다 */
+function parseCells(row: string) {
+  return (row.match(/<hp:tc\b[\s\S]*?<\/hp:tc>/g) || []).map((raw) => {
+    const addr = /<hp:cellAddr colAddr="(\d+)" rowAddr="(\d+)"\/>/.exec(raw)
+    const span = /<hp:cellSpan colSpan="(\d+)" rowSpan="(\d+)"\/>/.exec(raw)
+    const size = /<hp:cellSz width="(\d+)" height="(\d+)"\/>/.exec(raw)
+    return {
+      raw,
+      col: addr ? Number(addr[1]) : 0,
+      row: addr ? Number(addr[2]) : 0,
+      colSpan: span ? Number(span[1]) : 1,
+      rowSpan: span ? Number(span[2]) : 1,
+      width: size ? Number(size[1]) : 0,
+      height: size ? Number(size[2]) : 0,
+    }
+  })
+}
+
+/** 지금 표의 열 너비 (한 칸짜리 칸에서 읽는다) */
+export function columnWidths(xml: string, tableIndex: number): number[] {
+  const [a, b] = tableRange(xml, tableIndex)
+  const tbl = xml.slice(a, b)
+  const n = Number(/<hp:tbl\b[^>]*colCnt="(\d+)"/.exec(tbl)?.[1] || 0)
+  const out = new Array<number>(n).fill(0)
+  for (const row of splitRows(tbl)) for (const c of parseCells(row)) if (c.colSpan === 1 && !out[c.col]) out[c.col] = c.width
+  return out
+}
+
+/**
+ * 열 너비를 통째로 다시 놓는다. 여러 열에 걸친 칸은 걸친 열의 합, 표 너비는 전체 합이 된다.
+ * 편집 용지 여백을 바꿔 본문 너비가 달라졌을 때 표를 그 너비에 맞추는 데 쓴다.
+ */
+export function layoutColumns(xml: string, tableIndex: number, widths: number[]): string {
+  const [a, b] = tableRange(xml, tableIndex)
+  const tbl = xml.slice(a, b)
+  const sum = (from: number, span: number) => widths.slice(from, from + span).reduce((s, w) => s + (w || 0), 0)
+  const rows = splitRows(tbl).map((row) =>
+    parseCells(row)
+      .map((c) => c.raw.replace(/<hp:cellSz width="\d+"/, `<hp:cellSz width="${sum(c.col, c.colSpan)}"`))
+      .join(''),
+  )
+  const total = sum(0, widths.length)
+  const rebuilt =
+    tbl.slice(0, tbl.indexOf('<hp:tr>')) +
+    rows.map((r) => `<hp:tr>${r}</hp:tr>`).join('') +
+    tbl.slice(tbl.lastIndexOf('</hp:tr>') + 8)
+  return xml.slice(0, a) + rebuilt.replace(/(<hp:sz\b[^>]*?)width="\d+"/, `$1width="${total}"`) + xml.slice(b)
+}
+
+/** 표를 원하는 너비로 비율 그대로 늘리거나 줄인다 */
+export function scaleTable(xml: string, tableIndex: number, totalWidth: number): string {
+  const cur = columnWidths(xml, tableIndex)
+  const curTotal = cur.reduce((s, w) => s + w, 0)
+  if (!curTotal) return xml
+  const next = cur.map((w) => Math.round((w * totalWidth) / curTotal))
+  next[next.length - 1] += totalWidth - next.reduce((s, w) => s + w, 0)
+  return layoutColumns(xml, tableIndex, next)
+}
+
+/**
+ * 줄 높이(최소 높이)를 바꾼다. 여러 줄에 걸친 칸은 걸친 줄의 합이 된다.
+ * 한글은 글이 넘치면 알아서 늘리므로, 여기서는 빈 채로 너무 높던 줄을 낮추는 데 쓴다.
+ * @param heights 줄 번호 → 높이(HWPUNIT). 없는 줄은 지금 값을 둔다
+ */
+export function setRowHeights(xml: string, tableIndex: number, heights: Record<number, number>): string {
+  const [a, b] = tableRange(xml, tableIndex)
+  const tbl = xml.slice(a, b)
+  const rows = splitRows(tbl).map(parseCells)
+  // 지금 줄 높이는 그 줄의 한 줄짜리 칸에서 읽는다
+  const cur = rows.map((cells, i) => heights[i] ?? Math.min(...cells.filter((c) => c.rowSpan === 1).map((c) => c.height).concat([Number.POSITIVE_INFINITY])))
+  const fallback = Math.min(...cur.filter((h) => Number.isFinite(h)))
+  const h = cur.map((v) => (Number.isFinite(v) ? v : fallback))
+  const sum = (from: number, span: number) => h.slice(from, from + span).reduce((s, v) => s + v, 0)
+  const out = rows.map((cells) => cells.map((c) => c.raw.replace(/(<hp:cellSz width="\d+") height="\d+"/, `$1 height="${sum(c.row, c.rowSpan)}"`)).join(''))
+  const rebuilt =
+    tbl.slice(0, tbl.indexOf('<hp:tr>')) +
+    out.map((r) => `<hp:tr>${r}</hp:tr>`).join('') +
+    tbl.slice(tbl.lastIndexOf('</hp:tr>') + 8)
+  return xml.slice(0, a) + rebuilt.replace(/(<hp:sz\b[^>]*?)height="\d+"/, `$1height="${sum(0, h.length)}"`) + xml.slice(b)
+}
+
 // ───────────── 본문 문단 다루기 ─────────────
 
 /** 표 바깥 문단 중 글자가 `find` 로 시작하는 첫 문단의 글자를 바꾼다 */

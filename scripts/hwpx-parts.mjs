@@ -82,8 +82,21 @@ writeFileSync(`${OUT}/header.xml`, dec('Contents/header.xml'))
  */
 const dropLineSegs = (xml) => xml.replace(/<hp:linesegarray>[\s\S]*?<\/hp:linesegarray>/g, '')
 
+/**
+ * 편집 용지 여백을 줄여 한 쪽에 더 많이 들어가게 한다.
+ * 원본: 위·아래 15mm, 머리말·꼬리말 10mm, 왼·오른 20mm → 위·아래 10mm, 머리말·꼬리말 5mm, 왼·오른 15mm
+ * (1mm = 283.46 HWPUNIT). 표 너비는 앱이 새 본문 너비에 맞춰 다시 맞춘다 (src/lib/hwpxDoc.ts).
+ */
+const roomyMargins = (xml) =>
+  xml.replace(/<hp:margin header="\d+" footer="\d+" gutter="(\d+)" left="\d+" right="\d+" top="\d+" bottom="\d+"\/>/, '<hp:margin header="1417" footer="1417" gutter="$1" left="4252" right="4252" top="2835" bottom="2835"/>')
+
+/** 표가 한 쪽을 넘치면 통째로 다음 쪽에 가지 않고 줄 단위로 나뉘게 한다 */
+const splitByRow = (xml) => xml.replace(/(<hp:tbl\b[^>]*?)pageBreak="NONE"/g, '$1pageBreak="CELL"')
+
+const tidy = (xml) => splitByRow(roomyMargins(dropLineSegs(xml)))
+
 // 2) 서식1 — section1.xml 이 통째로 서식1 이다
-writeFileSync(`${OUT}/form1.xml`, dropLineSegs(dec('Contents/section1.xml')))
+writeFileSync(`${OUT}/form1.xml`, tidy(dec('Contents/section1.xml')))
 
 // 3) 서식2·서식3 — section2.xml 에서 잘라 낸다
 const sec2 = dec('Contents/section2.xml')
@@ -106,8 +119,8 @@ function cut(from, to) {
   body[0] = body[0].replace(/^(<hp:p\b[^>]*>)/, `$1${secRun[0]}`)
   return `${head}${body.join('')}</hs:sec>`
 }
-writeFileSync(`${OUT}/form2.xml`, dropLineSegs(cut(i2, i3)))
-writeFileSync(`${OUT}/form3.xml`, dropLineSegs(cut(i3, i4)))
+writeFileSync(`${OUT}/form2.xml`, tidy(cut(i2, i3)))
+writeFileSync(`${OUT}/form3.xml`, tidy(cut(i3, i4)))
 
 // 4) 나머지 뼈대 파일 (앱이 그대로 다시 넣는다)
 for (const n of ['version.xml', 'settings.xml', 'META-INF/container.xml', 'META-INF/container.rdf']) {

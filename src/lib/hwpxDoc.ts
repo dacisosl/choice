@@ -10,10 +10,15 @@
  */
 import type { Criterion, DocPublisher, Evaluation, Person, SummaryMember, SummaryRecommend } from '../types'
 import { columnTotal, computeSummary, rankLabel } from './scoring'
-import { buildHwpx, download, dropColumns, fillTable, loadPart, replaceParagraph, setDataRows, type CellFill } from './hwpx'
+import { buildHwpx, download, dropColumns, fillTable, layoutColumns, loadPart, replaceParagraph, scaleTable, setDataRows, setRowHeights, type CellFill } from './hwpx'
 
 /** 원본 서식이 감당하는 크기 */
 export const LIMITS = { publishers: 16, members: 7 }
+
+/** mm → HWPUNIT (1/7200 인치) */
+const mm = (v: number) => Math.round(v * 283.46)
+/** 편집 용지 여백을 좌우 15mm 로 두었을 때의 본문 너비 (scripts/hwpx-parts.mjs 와 맞춘다) */
+const TEXT_W = { landscape: mm(297 - 30), portrait: mm(210 - 30) }
 
 const sign = (title: string, who: Person) => `  ${title}           직 ${who.position || ''}        성명 ${who.name || ''}          (인)`
 
@@ -65,11 +70,22 @@ async function form1(d: Form1Data): Promise<string> {
   fills.push({ row: opinionRow, col: 0, text: `<종합의견 및 추천의견>\n${d.summaryOpinion || ''}` })
 
   xml = fillTable(xml, 0, fills)
-  // 쓰지 않는 출판사 열은 없앤다. 남은 너비는 평가기준 열과 출판사 열들이 고르게 나눠 가져
-  // 화면·PDF 와 비슷한 비율이 된다 (출판사가 적을수록 점수 칸이 넓어진다)
+  // 쓰지 않는 출판사 열은 없앤다
   const spare = []
   for (let i = pubs.length; i < LIMITS.publishers; i++) spare.push(COL0 + i)
-  xml = dropColumns(xml, 0, spare, [1, ...pubs.map((_, i) => COL0 + i)])
+  xml = dropColumns(xml, 0, spare, [1])
+
+  // 열 너비를 본문 너비에 맞춰 새로 놓는다.
+  // 평가영역은 '교육과정 적합성' 이 두 줄 안에 들어가게 22mm, 평가기준은 60mm 이상,
+  // 점수 칸은 남는 너비를 고르게(최대 45mm) — 출판사가 적을수록 점수 칸이 넓어지는 화면·PDF 와 같은 모양
+  const N = Math.max(pubs.length, 1)
+  const area = mm(22)
+  const pts = mm(16.6)
+  const rest = TEXT_W.landscape - area - pts
+  const pubW = Math.max(mm(9), Math.min(mm(45), Math.floor((rest - mm(60)) / N)))
+  xml = layoutColumns(xml, 0, [area, rest - pubW * N, pts, ...Array.from({ length: N }, () => pubW)])
+  // 비어 있을 때 쓸데없이 높던 줄은 낮춘다 (글이 길어지면 한글이 알아서 늘린다)
+  xml = setRowHeights(xml, 0, { 0: 1765, 1: 3000, [sumRow]: 2600, [opinionRow]: 8500 })
   xml = replaceParagraph(xml, '과  목', `과  목 : ${d.subjectName} 과      위  원 : ${d.teacherName}        (인)`)
   return xml
 }
@@ -94,6 +110,7 @@ async function form3(d: Form3Data): Promise<string> {
     fills.push({ row, col: 2, text: r.text || '' })
   })
   xml = fillTable(xml, 0, fills)
+  xml = scaleTable(xml, 0, TEXT_W.portrait)
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
   xml = replaceParagraph(xml, '교과협의회', `  교과협의회     작성자           직 ${d.writer.position || ''}        성명 ${d.writer.name || ''}          (인)`)
   xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker))
@@ -138,6 +155,7 @@ async function form2(d: Form2Data): Promise<string> {
   const spare = []
   for (let i = members.length; i < LIMITS.members; i++) spare.push(1 + i)
   xml = dropColumns(xml, 0, spare, members.map((_, i) => 1 + i))
+  xml = scaleTable(xml, 0, TEXT_W.portrait)
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
   xml = replaceParagraph(xml, '작성자', sign('작성자', d.writer))
   xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker))
