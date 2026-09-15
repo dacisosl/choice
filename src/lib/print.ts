@@ -21,12 +21,24 @@ function printOne(selector?: string, title?: string): Promise<void> {
     const prevTitle = document.title
     if (title) document.title = title.replace(/[\\/:*?"<>|]/g, ' ').trim()
 
+    // 종이 방향은 이 서식 하나에 맞춰 문서 전체에 건다.
+    // 한 문서 안에서 세로·가로 페이지를 이름으로 섞으면(@page landscape) 브라우저에 따라
+    // 첫 장에 빈 세로 페이지가 끼어 나오므로, 서식마다 따로 인쇄하는 지금은 기본 페이지 하나만 쓴다.
+    const landscape = targets.some((el) => el.classList.contains('landscape'))
+    const pageStyle = document.createElement('style')
+    pageStyle.id = 'print-page-size'
+    pageStyle.textContent = `@page { size: A4 ${landscape ? 'landscape' : 'portrait'}; margin: ${landscape ? '10mm' : '12mm'}; }`
+    document.head.appendChild(pageStyle)
+    document.documentElement.classList.add('printing')
+
     let done = false
     let guard = 0
     const cleanup = () => {
       if (done) return
       done = true
       all.forEach((el) => el.classList.remove('print-skip'))
+      pageStyle.remove()
+      document.documentElement.classList.remove('printing')
       document.title = prevTitle
       window.removeEventListener('afterprint', cleanup)
       window.clearTimeout(guard)
