@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SettingsJsonModal } from '../components/SettingsJsonModal'
 
 /** 문구·버튼이 없는 책·책상 부분만 잘라 둔 사진 (public/hero-band.png) */
 const HERO_URL = `${import.meta.env.BASE_URL}hero-band.png`
@@ -62,6 +63,7 @@ function FrontCoverArt() {
 
 export function Start({ go }: { go: (h: string) => void }) {
   const heroImg = useHeroImage()
+  const [jsonOpen, setJsonOpen] = useState(false)
   if (heroImg === null) return <section className="hero-split" style={{ minHeight: 560 }} />
 
   return (
@@ -107,10 +109,16 @@ export function Start({ go }: { go: (h: string) => void }) {
         <button className="chip-pill" onClick={() => go('compile')}>
           <span className="chip-sub">총괄 작성 교사라면</span> 평가총괄표 작성 <span aria-hidden="true">→</span>
         </button>
-        <button className="hero-guide" onClick={() => go('guide')}>
-          <span aria-hidden="true">▶</span> 처음이신가요? <b>1분 사용법 보기</b>
-        </button>
+        <div className="hero-links">
+          <button className="hero-guide" onClick={() => go('guide')}>
+            <span aria-hidden="true">▶</span> 처음이신가요? <b>1분 사용법 보기</b>
+          </button>
+          <button className="hero-guide" onClick={() => setJsonOpen(true)} title="학교 안에서 평가기준·설정을 파일로 나눠 쓰기">
+            <span aria-hidden="true">{ }</span> <b>설정 JSON</b> 저장·불러오기
+          </button>
+        </div>
       </div>
+      {jsonOpen && <SettingsJsonModal onClose={() => setJsonOpen(false)} />}
     </section>
   )
 }

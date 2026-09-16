@@ -370,12 +370,27 @@ td.num { text-align: center; }
 .guide-zoom { flex-direction: column; gap: 12px; cursor: zoom-out; padding: 24px; }
 .guide-zoom img { max-width: 100%; max-height: 82vh; border-radius: 8px; box-shadow: 0 18px 50px rgba(0,0,0,0.4); background: #fff; }
 
+/* 설정 JSON 저장·불러오기 창 */
+.modal.settings-json { width: min(640px, 100%); }
+.json-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.json-card { background: var(--sur-sub); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.json-card b { font-size: 15px; color: var(--title); }
+.json-card p { margin: 0; flex: 1 1 auto; line-height: 1.6; }
+.json-card .btn { align-self: flex-start; }
+.json-pending h4 { margin: 8px 0 6px; font-size: 14.5px; color: var(--title); }
+@media (max-width: 640px) { .json-actions { grid-template-columns: 1fr; } }
+.hero-links { display: flex; flex-direction: column; align-items: flex-end; gap: 0; }
+@media (max-width: 760px) { .hero-links { align-items: center; } }
+
 /* 시작 화면의 사용법 링크 */
 .hero-guide {
   display: inline-flex; align-items: center; gap: 6px; align-self: flex-end;
-  margin-top: 10px; padding: 6px 4px; border: 0; background: none; cursor: pointer;
+  margin-top: 8px; padding: 5px 12px; border: 0; cursor: pointer; border-radius: 999px;
+  /* 사진 위에 얹히므로 옅은 바탕을 깔아 글자가 읽히게 한다 */
+  background: rgba(244, 240, 232, 0.88); backdrop-filter: blur(3px);
   color: var(--text-2); font-size: 13.5px; font-weight: 500;
 }
+.hero-guide:hover { background: rgba(255, 255, 255, 0.95); }
 .hero-guide b { color: var(--primary); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--primary-soft-line); }
 .hero-guide:hover b { text-decoration-color: currentColor; }
 
