@@ -33,12 +33,9 @@ export function migrateMaster(raw: unknown): Master {
  */
 function refreshDefaultCriteria(list: Criterion[]): Criterion[] {
   const defaults = list.filter((c) => c.subjectId === null).sort((a, b) => a.order - b.order)
-  const untouched =
-    defaults.length === LEGACY_DEFAULT_CRITERIA.length &&
-    defaults.every((c, i) => {
-      const l = LEGACY_DEFAULT_CRITERIA[i]
-      return c.area === l.area && c.text === l.text && c.points === l.points
-    })
+  const untouched = LEGACY_DEFAULT_CRITERIA.some(
+    (legacy) => defaults.length === legacy.length && defaults.every((c, i) => c.area === legacy[i].area && c.text === legacy[i].text && c.points === legacy[i].points),
+  )
   if (!untouched) return list
   return [...list.filter((c) => c.subjectId !== null), ...seedCriteria()]
 }
