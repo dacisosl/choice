@@ -684,8 +684,12 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
 
 @media print {
   /* 기본은 세로(서식2·3). 서식1(가로)은 인쇄 단추가 그때만 @page 를 가로로 바꿔 건다 (src/lib/print.ts).
-     예전처럼 이름 붙인 페이지(@page landscape)로 방향을 섞으면 첫 장에 빈 세로 페이지가 끼는 브라우저가 있다 */
+     이름 붙인 페이지(@page landscape)로 방향을 섞으면 첫 장에 빈 세로 페이지가 끼는 브라우저가 있어
+     단추로 인쇄할 때(html.printing)는 쓰지 않고, Ctrl+P 처럼 단추를 거치지 않은 인쇄에서만
+     가로 서식이 세로 종이에 잘려 나오지 않도록 예비로 둔다 */
   @page { size: A4 portrait; margin: 12mm; }
+  @page landscape { size: A4 landscape; margin: 10mm; }
+  html:not(.printing) .form-sheet.landscape { page: landscape; }
   /* 화면용 min-height:100vh 가 남아 있으면 서식 뒤에 빈 장이 한 쪽 더 나온다 */
   html, body { background: #fff !important; margin: 0; padding: 0; height: auto; min-height: 0 !important; }
   #root, .app { min-height: 0 !important; }

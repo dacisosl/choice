@@ -75,12 +75,25 @@ export function seedSubjects(): Subject[] {
   return out
 }
 
+/** 기본 평가기준 (학교 선정 계획안의 서식1 예시 그대로, 5항목 × 20점) */
 export const DEFAULT_CRITERIA: Omit<Criterion, 'id' | 'subjectId'>[] = [
-  { area: '교육과정 적합성', text: '2022 개정 교육과정 성취기준 반영 및 내용의 타당성', points: 25, locked: false, order: 1 },
-  { area: '내용의 선정·조직', text: '학생 수준·흥미에 맞는 내용 선정과 체계적 구성', points: 25, locked: false, order: 2 },
-  { area: '교수·학습 및 평가', text: '탐구·활동 과제, 자기주도학습 및 평가 자료의 적절성', points: 20, locked: false, order: 3 },
-  { area: '표현·표기 및 편집', text: '문장·용어의 정확성, 삽화·디자인·가독성', points: 15, locked: false, order: 4 },
-  { area: '가격 및 재정 (필수)', text: '정가의 적정성, 전년 대비 증감 및 동일 과목 타 도서와의 비교', points: 15, locked: true, order: 5 },
+  { area: '교육과정', text: '학교 교육과정의 성격 및 목표에 부합하는가?', points: 20, locked: false, order: 1 },
+  { area: '학습내용 선정', text: '학습자의 학년 수준에 맞는 학습 내용과 활동을 다루고 있는가?', points: 20, locked: false, order: 2 },
+  { area: '학습내용 조직', text: '학습 수준별로 학습이 가능한 자료를 제시하고 있는가?', points: 20, locked: false, order: 3 },
+  { area: '교수학습 활동', text: '학습 주제에 적절하며, 실현 가능한 학습활동 및 방법을 제시하고 있는가?', points: 20, locked: false, order: 4 },
+  { area: '학습평가', text: '학생 스스로 점검할 수 있는 평가 방법을 안내하고 있는가?', points: 20, locked: false, order: 5 },
+]
+
+/**
+ * 예전 기본 평가기준. 이 컴퓨터의 기본 기준이 이것과 똑같으면(선생님이 손대지 않았으면)
+ * 새 기본값으로 바꿔 준다 (store/migrate.ts). 손댄 기준은 그대로 둔다.
+ */
+export const LEGACY_DEFAULT_CRITERIA: Pick<Criterion, 'area' | 'text' | 'points'>[] = [
+  { area: '교육과정 적합성', text: '2022 개정 교육과정 성취기준 반영 및 내용의 타당성', points: 25 },
+  { area: '내용의 선정·조직', text: '학생 수준·흥미에 맞는 내용 선정과 체계적 구성', points: 25 },
+  { area: '교수·학습 및 평가', text: '탐구·활동 과제, 자기주도학습 및 평가 자료의 적절성', points: 20 },
+  { area: '표현·표기 및 편집', text: '문장·용어의 정확성, 삽화·디자인·가독성', points: 15 },
+  { area: '가격 및 재정 (필수)', text: '정가의 적정성, 전년 대비 증감 및 동일 과목 타 도서와의 비교', points: 15 },
 ]
 
 export function seedCriteria(): Criterion[] {

@@ -1,5 +1,5 @@
 import type { Criterion, Evaluation, Master, Settings, Summary } from '../types'
-import { DATA_VERSION, DEFAULT_SETTINGS, seedMaster } from '../seed'
+import { DATA_VERSION, DEFAULT_SETTINGS, LEGACY_DEFAULT_CRITERIA, seedCriteria, seedMaster } from '../seed'
 import { criteriaFor, publishersFor } from '../lib/scoring'
 
 /** 예전 구조(접속 코드·위원 명단·과목 마감 등)의 마스터를 현재 구조로 정리한다 */
@@ -21,10 +21,26 @@ export function migrateMaster(raw: unknown): Master {
           return rest
         }),
     publishers: stale ? [] : m.publishers || [],
-    criteria: m.criteria && m.criteria.length ? m.criteria : base.criteria,
+    criteria: refreshDefaultCriteria(m.criteria && m.criteria.length ? m.criteria : base.criteria),
     opinionOptions: m.opinionOptions && m.opinionOptions.length ? m.opinionOptions : base.opinionOptions,
     updatedAt: m.updatedAt || base.updatedAt,
   }
+}
+
+/**
+ * 기본 평가기준이 예전 기본값 그대로(손대지 않은 상태)면 새 기본값으로 바꾼다.
+ * 선생님이 고쳐 둔 기준이나 과목 전용 기준은 건드리지 않는다.
+ */
+function refreshDefaultCriteria(list: Criterion[]): Criterion[] {
+  const defaults = list.filter((c) => c.subjectId === null).sort((a, b) => a.order - b.order)
+  const untouched =
+    defaults.length === LEGACY_DEFAULT_CRITERIA.length &&
+    defaults.every((c, i) => {
+      const l = LEGACY_DEFAULT_CRITERIA[i]
+      return c.area === l.area && c.text === l.text && c.points === l.points
+    })
+  if (!untouched) return list
+  return [...list.filter((c) => c.subjectId !== null), ...seedCriteria()]
 }
 
 /**
