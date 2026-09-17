@@ -105,25 +105,26 @@ export function Compile({ go }: { go: (h: string) => void }) {
     })
   }
 
-  /** 인쇄 전에 책임·검토를 한 번 짚어 준다. 총괄표와 추천 의견서는 차례로 따로 저장한다 */
-  const askPrint = () => {
+  /**
+   * 인쇄 전에 책임·검토를 한 번 짚어 준다.
+   * 서식마다 따로 인쇄한다 — 총괄표 단추는 총괄표만, 추천 의견서 단추는 의견서만.
+   */
+  const askPrint = (kind: 'form2' | 'form3') => {
     if (!sum) return
+    const what = kind === 'form2' ? '평가 총괄표' : '추천 의견서'
     setNotice({
-      title: '인쇄하기 전에 확인해 주세요',
+      title: `${what}를 인쇄하기 전에 확인해 주세요`,
       tone: 'info',
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
         '위원들이 올린 평가표에서 자동으로 계산한 초안입니다. 총점 · 평균 · 순위를 원본과 대조한 뒤 제출해 주세요.',
         '위원 이름과 출판사명이 바르게 들어갔는지 다시 한 번 살펴 주세요.',
-        '인쇄 창이 두 번 열립니다. 먼저 평가 총괄표, 이어서 추천 의견서를 각각 저장해 주세요.',
+        `이 단추는 ${what}만 인쇄합니다.`,
       ],
       confirmLabel: '확인했습니다, 인쇄',
       onConfirm: () => {
         setNotice(null)
-        void printSheetsInTurn([
-          { selector: '.form-sheet.form2', title: `평가 총괄표_${sum.subjectName}` },
-          { selector: '.form-sheet.form3', title: `추천 의견서_${sum.subjectName}` },
-        ])
+        void printSheetsInTurn([{ selector: `.form-sheet.${kind}`, title: `${what}_${sum.subjectName}` }])
       },
     })
   }
@@ -671,8 +672,11 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   <button className="btn" onClick={() => setStep(1)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={askPrint}>
-                    <PrinterIcon /> 인쇄 · PDF 저장
+                  <button className="btn primary" onClick={() => askPrint('form2')}>
+                    <PrinterIcon /> 총괄표 인쇄 · PDF
+                  </button>
+                  <button className="btn" onClick={() => askPrint('form3')}>
+                    <PrinterIcon /> 추천 의견서 인쇄 · PDF
                   </button>
                   <button className="btn soft" onClick={saveHwpx}>
                     <HwpIcon /> 한글(hwpx) 저장
@@ -682,7 +686,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>평가 총괄표</b>와 <b>추천 의견서</b>를 각각 저장합니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
+              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 인쇄 단추는 <b>서식마다 따로</b>입니다 — [총괄표 인쇄]는 평가 총괄표만, [추천 의견서 인쇄]는 의견서만 나옵니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
               <div className="sheet-wrap">
                 <SheetFit fitHeight={false} minScale={0.5}>
                 <Form2Sheet

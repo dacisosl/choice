@@ -16,13 +16,13 @@ export function NumberCell({ value, max, min = 0, readOnly, onChange, onDraft, c
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value))
   const ref = useRef<HTMLInputElement>(null)
+  // 고치기 시작할 때 지금 값을 담아 두고(아래 onClick), 여기서는 커서만 옮긴다.
+  // 예전에는 value 가 바뀔 때마다 입력칸을 되돌려, 빨리 친 숫자가 옛 값으로 덮이는 일이 있었다.
   useEffect(() => {
-    if (editing) {
-      setDraft(String(value))
-      ref.current?.focus()
-      ref.current?.select()
-    }
-  }, [editing, value])
+    if (!editing) return
+    ref.current?.focus()
+    ref.current?.select()
+  }, [editing])
   const over = max !== undefined && value > max
   const stop = () => {
     setEditing(false)
@@ -36,7 +36,11 @@ export function NumberCell({ value, max, min = 0, readOnly, onChange, onDraft, c
   return (
     <td
       className={`num editable ${over ? 'over' : ''} ${className || ''}`}
-      onClick={() => !readOnly && !editing && setEditing(true)}
+      onClick={() => {
+        if (readOnly || editing) return
+        setDraft(String(value))
+        setEditing(true)
+      }}
       title={over ? `배점(${max}) 초과` : undefined}
     >
       {editing ? (
