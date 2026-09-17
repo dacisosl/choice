@@ -1,4 +1,5 @@
 import type { OpinionOption, RecommendStrength, Tone } from '../types'
+import { adnominal, josa } from './josa'
 
 /**
  * 의견 문장 만들기. 고른 핵심의견을 규칙에 따라 문장으로 엮는다.
@@ -123,8 +124,8 @@ export function generateOpinion(input: GenInput): string {
     const rankTxt = input.rank ? `${input.rank}순위` : ''
     sentences.push(
       t === 'formal'
-        ? `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}을(를) ${rankTxt}로 추천함.`
-        : `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}을(를) ${rankTxt}로 추천합니다.`,
+        ? `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}${josa(p, '을')} ${rankTxt}로 추천함.`
+        : `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}${josa(p, '을')} ${rankTxt}로 추천합니다.`,
     )
     const srcs = (input.sources || []).filter(Boolean)
     if (srcs.length) {
@@ -154,17 +155,15 @@ export function generateOpinion(input: GenInput): string {
     else sentences.push(conj(`아울러 ${body}`, t))
   })
   if (neg.length) {
-    const body = neg.map(phrase).join('고, ')
-    sentences.push(
-      t === 'formal' ? `다만 ${body}은 점은 보완이 필요함.` : `다만 ${body}은 점은 보완이 필요합니다.`,
-    )
+    const body = adnominal(neg.map(phrase).join('고, '))
+    sentences.push(t === 'formal' ? `다만 ${body} 점은 보완이 필요함.` : `다만 ${body} 점은 보완이 필요합니다.`)
   }
   if (input.kind === 'recommend') {
     const st = input.strength || '추천'
     const rk = input.rank ? `${input.rank}순위로` : ''
     const verb =
       st === '적극 추천' ? '적극 추천하' : st === '대안으로 추천' ? '대안으로 추천하' : '추천하'
-    sentences.push(conj(`이상의 사유로 ${p}을(를) ${rk} ${verb}`.replace(/\s+/g, ' '), t))
+    sentences.push(conj(`이상의 사유로 ${p}${josa(p, '을')} ${rk} ${verb}`.replace(/\s+/g, ' '), t))
   } else if (input.rank) {
     sentences.push(conj(`종합적으로 ${input.rank}순위로 평가하`, t))
   }

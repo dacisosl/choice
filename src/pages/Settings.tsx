@@ -4,6 +4,7 @@ import { DEFAULT_CRITERIA, seedSubjects, uid } from '../seed'
 import { useAppData } from '../store/useAppData'
 import { publishersFor } from '../lib/scoring'
 import { downloadText, parseCsv, readFileText, toCsv } from '../lib/csv'
+import { josa } from '../lib/josa'
 
 const TABS = ['교과서 자료', '선정 과목 관리', '과목별 출판사 관리', '평가기준']
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
@@ -334,7 +335,7 @@ function PublishersTab() {
   const addOne = () => {
     if (!subject || !newPub.trim()) return
     if (pubs.some((p) => p.name === newPub.trim())) return setMsg({ type: 'warn', text: '이미 있는 출판사입니다.' })
-    setPubs(subject.id, [...pubs, { id: uid(), subjectId: subject.id, name: newPub.trim(), order: pubs.length + 1 }], `${newPub.trim()}을(를) 추가했습니다.`)
+    setPubs(subject.id, [...pubs, { id: uid(), subjectId: subject.id, name: newPub.trim(), order: pubs.length + 1 }], `${newPub.trim()}${josa(newPub.trim(), '을')} 추가했습니다.`)
     setNewPub('')
   }
 
