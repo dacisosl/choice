@@ -24,10 +24,33 @@ const pubsKey = (subjectId: string) => `choice.pubs.${subjectId}`
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 열려 있는 의견 작성 창 */
 type OpenModal = { kind: 'summary' } | { kind: 'recommend'; rank: number } | null
-/** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
-type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
+/** 안내 창: 점수 수정 제한 / 인쇄 전 확인 / 교과서 자료 출처 */
+type Notice = {
+  title: string
+  tone: 'warn' | 'info'
+  lines: string[]
+  /** 본문 아래에 붙일 링크 */
+  link?: { label: string; href: string }
+  confirmLabel?: string
+  onConfirm?: () => void
+  /** 닫기 단추 글자 (없으면 tone 에 따라 정해진다) */
+  closeLabel?: string
+} | null
 
 const DRAFT_NOTE = '자동으로 만든 초안입니다. 반드시 검토한 뒤 사용해 주세요.'
+const WEB_EXHIBIT = 'https://m.textbook114.com/'
+/** 과목을 처음 고를 때 한 번 띄우는 교과서 자료 출처 안내 */
+const CATALOG_NOTICE = {
+  title: '과목 · 출판사 정보는 한 번 더 확인해 주세요',
+  tone: 'info' as const,
+  lines: [
+    '이 과목 · 출판사 매칭 정보는 교과서 웹전시관에서 내려받은 자료로 만들었습니다.',
+    '자료를 정리하는 과정에서 누락된 정보가 있을 수 있습니다.',
+    '정확한 정보는 웹전시관에서 한 번 더 확인해 주세요.',
+  ],
+  link: { label: '교과서 웹전시관 열기 (m.textbook114.com)', href: WEB_EXHIBIT },
+  closeLabel: '확인했습니다',
+}
 
 export function Personal({ go }: { go: (h: string) => void }) {
   const { master, evaluations, saveEvaluation, deleteEvaluation } = useAppData()
@@ -38,6 +61,8 @@ export function Personal({ go }: { go: (h: string) => void }) {
   const [notice, setNotice] = useState<Notice>(null)
   const [sideOpen, setSideOpen] = useState(true)
   const saveTimer = useRef<number | null>(null)
+  /** 교과서 자료 출처 안내를 이미 띄웠는지 (화면을 열어 둔 동안 한 번) */
+  const catalogNoticed = useRef(false)
 
   // 기본정보
   const [teacherName, setTeacherName] = useState('')
@@ -80,6 +105,11 @@ export function Personal({ go }: { go: (h: string) => void }) {
     const remembered = lsGet<DocPublisher[]>(pubsKey(id), [])
     const start = shared.length ? shared : remembered
     setPubs(start.length ? start : [{ id: uid(), name: '' }, { id: uid(), name: '' }, { id: uid(), name: '' }])
+    // 교과서 자료에서 출판사를 채웠으면 어디서 온 자료인지 한 번 알려 준다 (열어 둔 동안 한 번만)
+    if (shared.length && !catalogNoticed.current) {
+      catalogNoticed.current = true
+      setNotice(CATALOG_NOTICE)
+    }
   }
 
   // 자동 저장 (디바운스 1초)
@@ -440,6 +470,9 @@ export function Personal({ go }: { go: (h: string) => void }) {
                 <button className="btn sm" style={{ marginTop: 8 }} onClick={addPub}>
                   + 출판사 추가
                 </button>
+                <button className="linklike small" style={{ display: 'block', marginTop: 10 }} onClick={() => setNotice(CATALOG_NOTICE)}>
+                  이 목록은 어디서 왔나요?
+                </button>
               </>
             )}
 
@@ -608,7 +641,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
           tone={notice.tone}
           confirmLabel={notice.confirmLabel}
           onConfirm={notice.onConfirm}
-          cancelLabel={notice.tone === 'info' ? '돌아가서 검토' : '닫기'}
+          cancelLabel={notice.closeLabel || (notice.tone === 'info' ? '돌아가서 검토' : '닫기')}
           onClose={() => setNotice(null)}
         >
           <ul className="notice-list">
@@ -616,6 +649,11 @@ export function Personal({ go }: { go: (h: string) => void }) {
               <li key={i}>{t}</li>
             ))}
           </ul>
+          {notice.link && (
+            <a className="notice-link" href={notice.link.href} target="_blank" rel="noopener noreferrer">
+              {notice.link.label} ↗
+            </a>
+          )}
         </NoticeModal>
       )}
     </div>

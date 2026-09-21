@@ -555,6 +555,13 @@ td.num { text-align: center; }
 .school-tip b { color: var(--title); }
 .school-tip p { margin: 6px 0 10px; color: var(--text-2); line-height: 1.5; }
 /* 학교 아이디 묻는 창 */
+.notice-link {
+  display: inline-block; margin: 10px 0 2px; padding: 8px 14px; border-radius: 999px;
+  background: var(--primary-soft); border: 1px solid var(--primary-soft-line);
+  color: var(--primary); font-size: 13.5px; font-weight: 700; text-decoration: none; word-break: keep-all;
+}
+.notice-link:hover { background: #d3e1d8; }
+
 .modal.school-modal { width: min(460px, 100%); text-align: center; }
 .school-modal .modal-body { padding: 30px 28px 26px; }
 .school-modal-title { margin: 0 0 10px; font-size: 20px; font-weight: 800; color: var(--title); }
