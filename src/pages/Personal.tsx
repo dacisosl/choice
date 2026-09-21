@@ -38,7 +38,7 @@ type Notice = {
 } | null
 
 const DRAFT_NOTE = '자동으로 만든 초안입니다. 반드시 검토한 뒤 사용해 주세요.'
-const WEB_EXHIBIT = 'https://m.textbook114.com/'
+const WEB_EXHIBIT = 'https://www.textbook114.com/wds/login.jsp'
 /** 과목을 처음 고를 때 한 번 띄우는 교과서 자료 출처 안내 */
 const CATALOG_NOTICE = {
   title: '과목 · 출판사 정보는 한 번 더 확인해 주세요',
@@ -48,7 +48,7 @@ const CATALOG_NOTICE = {
     '자료를 정리하는 과정에서 누락된 정보가 있을 수 있습니다.',
     '정확한 정보는 웹전시관에서 한 번 더 확인해 주세요.',
   ],
-  link: { label: '교과서 웹전시관 열기 (m.textbook114.com)', href: WEB_EXHIBIT },
+  link: { label: '교과서 웹전시관 열기 (textbook114.com)', href: WEB_EXHIBIT },
   closeLabel: '확인했습니다',
 }
 
