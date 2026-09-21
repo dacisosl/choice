@@ -38,7 +38,7 @@
 | 한글(hwpx) 저장 | 교육청 원본 서식(`assets/선정계획안-원본서식.hwpx`)에서 뽑아 둔 XML(`public/forms/`)의 표 칸에 값만 채워 브라우저에서 hwpx(zip)로 묶어 내려받는다. 서식1+서식3(위원), 서식2+서식3(총괄)이 한 파일. 원본 서식 한도: 출판사 16곳 · 위원 7명 |
 | 총괄표 | ① 작성자·과목 입력 + 위원 PDF·JSON 올리기 → [총괄표 생성하기] → ② 평가 총괄표·추천 의견서 확인·편집 → ③ 인쇄·PDF·JSON 저장 |
 | 설정 | 교과서 자료 현황·다시 불러오기, 선정 과목 관리(목록 붙여넣기·CSV·개별 추가/수정/삭제), 과목별 출판사 관리, 평가기준 |
-| 교과서 자료 | 원본은 `assets/웹전시목록-중학교.xls`(405행)·`assets/웹전시목록-고등학교.xls`(1,195행). `node scripts/catalog-from-xls.mjs --out public/catalog.json assets/웹전시목록-*.xls` 로 만들고, `node scripts/verify-catalog.mjs` 로 한 행도 빠지지 않았는지 대조한다 |
+| 교과서 자료 | 원본은 `assets/웹전시목록-중학교.xls`(405행)·`assets/웹전시목록-고등학교.xls`(1,195행). `node scripts/catalog-from-xls.mjs --out public/catalog.json assets/웹전시목록-*.xls` 로 만들고, `node scripts/verify-catalog.mjs` 로 한 행도 빠지지 않았는지 대조한다. 한 발행사가 같은 과목에 책을 두 종 냈으면 `㈜비상교육(박영민)`처럼 대표저자를 붙여 나눈다 |
 | 설정 JSON | 첫 화면 [설정 JSON] → 평가기준·의견 선택지·문서 설정·직접 넣은 과목/출판사를 파일 하나로 저장·불러오기(`src/lib/settingsFile.ts`). 교과서 자료(catalog)와 작성한 평가표는 넣지 않는다. 불러올 때 바뀌는 내용을 먼저 보여 주고 확인 뒤 적용 |
 | 사용 설명 (`#/guide`) | 실제 화면 사진으로 만든 16장짜리 안내 캐러셀. 첫 화면의 [1분 사용법 보기], 위쪽 [사용법] 단추로 들어갑니다. 사진은 `public/guide/*.jpg` 이며 `scripts` 없이 앱에서 그대로 읽습니다 |
 

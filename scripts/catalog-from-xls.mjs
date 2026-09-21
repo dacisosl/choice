@@ -151,6 +151,7 @@ function readTable(file) {
     pub: findCol(header, ['발행사', '발행처', '출판사']),
     price: findCol(header, ['정가', '가격']),
     kind: findCol(header, ['도서종류']),
+    author: findCol(header, ['저자', '지은이']),
   }
   if (ci.name < 0 || ci.pub < 0) {
     console.error(`  ${file}: 머리글에서 '도서명(서명)'과 '발행사(발행처)' 열을 찾지 못했습니다. 읽은 머리글: ${header.join(' | ')}`)
@@ -171,6 +172,7 @@ function readTable(file) {
       // 중학교의 '1-1·①' 은 책의 권 표시라 붙이지 않는다 (--권별 이면 모두 붙인다)
       name: vol && (perVolume || s.school === '고') ? `${base}${/^[0-9ⅠⅡⅢ]+$/.test(vol) ? '' : ' '}${vol}` : base,
       publisher,
+      author: ci.author >= 0 ? clean(row[ci.author]) : '',
       price: ci.price >= 0 ? clean(row[ci.price]) : '',
       kind: ci.kind >= 0 ? clean(row[ci.kind]) : '',
     })
@@ -216,6 +218,10 @@ if (merge && existsSync(out)) {
 }
 
 let added = 0
+/** 과목 → 발행사 → 대표저자들 (같은 발행사가 두 종을 냈는지 가린다) */
+const books = new Map()
+/** '박영민 외 12명' → '박영민' */
+const leadAuthor = (a) => clean(a).split(/\s*외\s*/)[0].trim()
 /** 같은 과목이 '기술·가정' / '기술 · 가정' 처럼 다르게 적혀 오면 표기를 세어 둔다 */
 const nameCounts = new Map()
 for (const r of rows) {
@@ -230,7 +236,40 @@ for (const r of rows) {
   counts.set(r.name, (counts.get(r.name) || 0) + 1)
   if (!s.subjectGroup && r.subjectGroup) s.subjectGroup = r.subjectGroup
   if (!s.publishers.some((p) => pubName(p) === r.publisher)) s.publishers.push(r.price ? { name: r.publisher, price: r.price } : r.publisher)
+  // 발행사별 대표저자를 나온 순서대로 모아 둔다
+  if (!books.has(key)) books.set(key, new Map())
+  const perPub = books.get(key)
+  if (!perPub.has(r.publisher)) perPub.set(r.publisher, new Map())
+  const lead = leadAuthor(r.author)
+  if (lead && !perPub.get(r.publisher).has(lead)) perPub.get(r.publisher).set(lead, r.price || '')
 }
+
+/**
+ * 한 발행사가 같은 과목에 책을 두 종 이상 냈으면 (저자가 다른 책) 대표저자를 붙여 나눈다.
+ *   ㈜비상교육 → ㈜비상교육(박영민) · ㈜비상교육(강호영)
+ * 한 종뿐이면 발행사 이름 그대로 둔다.
+ */
+let splitPubs = 0
+for (const [key, perPub] of books) {
+  const s = bySubject.get(key)
+  if (!s) continue
+  const next = []
+  for (const p of s.publishers) {
+    const name = pubName(p)
+    const leads = [...(perPub.get(name) || new Map()).keys()]
+    if (leads.length < 2) {
+      next.push(p)
+      continue
+    }
+    splitPubs += leads.length - 1
+    for (const lead of leads) {
+      const label = `${name}(${lead})`
+      next.push(typeof p === 'string' ? label : { ...p, name: label })
+    }
+  }
+  s.publishers = next
+}
+if (splitPubs) console.log(`  (한 과목에 책을 두 종 이상 낸 발행사는 대표저자를 붙여 나눴습니다 — ${splitPubs}줄 늘어남)`)
 
 // 표기가 여럿이면 가장 많이 쓰인 것을 쓰고, 같으면 띄어쓰기가 적은 쪽을 쓴다
 let renamed = 0
