@@ -216,16 +216,33 @@ if (merge && existsSync(out)) {
 }
 
 let added = 0
+/** 같은 과목이 '기술·가정' / '기술 · 가정' 처럼 다르게 적혀 오면 표기를 세어 둔다 */
+const nameCounts = new Map()
 for (const r of rows) {
   const key = keyOf(r)
   if (!bySubject.has(key)) {
     bySubject.set(key, { school: r.school, gradeGroup: r.gradeGroup, subjectGroup: r.subjectGroup, name: r.name, publishers: [] })
+    nameCounts.set(key, new Map())
     added++
   }
   const s = bySubject.get(key)
+  const counts = nameCounts.get(key)
+  counts.set(r.name, (counts.get(r.name) || 0) + 1)
   if (!s.subjectGroup && r.subjectGroup) s.subjectGroup = r.subjectGroup
   if (!s.publishers.some((p) => pubName(p) === r.publisher)) s.publishers.push(r.price ? { name: r.publisher, price: r.price } : r.publisher)
 }
+
+// 표기가 여럿이면 가장 많이 쓰인 것을 쓰고, 같으면 띄어쓰기가 적은 쪽을 쓴다
+let renamed = 0
+for (const [key, counts] of nameCounts) {
+  if (counts.size < 2) continue
+  const spaces = (x) => (x.match(/\s/g) || []).length
+  const best = [...counts].sort((a, b) => b[1] - a[1] || spaces(a[0]) - spaces(b[0]) || a[0].localeCompare(b[0], 'ko'))[0][0]
+  const s = bySubject.get(key)
+  if (s.name !== best) renamed++
+  s.name = best
+}
+if (renamed) console.log(`  (표기가 여러 가지인 과목 ${nameCounts.size && [...nameCounts.values()].filter((m) => m.size > 1).length}개 중 ${renamed}개의 이름을 많이 쓰인 표기로 맞췄습니다)`)
 
 const order = { 중: 0, 고: 1 }
 const subjects = [...bySubject.values()].sort(
