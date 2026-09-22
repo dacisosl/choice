@@ -308,7 +308,8 @@ td.num { text-align: center; }
 .site-foot a { color: var(--text-2); text-decoration: none; font-weight: 600; }
 .site-foot a:hover { color: var(--primary); text-decoration: underline; }
 .site-foot-note { flex: 1 1 auto; }
-.site-foot-by { white-space: nowrap; }
+.site-foot-by { white-space: nowrap; display: none; }
+html[data-route="home"] .site-foot-by { display: inline; } /* 첫 화면에서만 */
 .site-foot-by b { color: var(--text-2); font-weight: 700; }
 @media (max-width: 760px) { .site-foot { justify-content: center; text-align: center; padding-bottom: 16px; } .site-foot-note { flex-basis: 100%; } .site-foot-by { flex-basis: 100%; } }
 

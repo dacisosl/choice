@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppDataProvider, useAppData, useHashRoute } from './store/useAppData'
 import { NoticeModal } from './components/NoticeModal'
 import { Start } from './pages/Start'
@@ -46,6 +46,10 @@ function Shell() {
   const { ready } = useAppData()
   const [route, go] = useHashRoute()
   const [priceOpen, setPriceOpen] = useState(false)
+  // 지금 화면을 <html data-route> 로 알려 준다 — 정적 푸터의 제작자 표기를 첫 화면에서만 보이게 하는 데 쓴다
+  useEffect(() => {
+    document.documentElement.dataset.route = route || 'home'
+  }, [route])
   if (!ready) return <div className="app muted" style={{ paddingTop: 40 }}>불러오는 중…</div>
   return (
     <div className="app">
