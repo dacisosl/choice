@@ -65,6 +65,9 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
   const subject = master.subjects.find((s) => s.id === subjectId)
   const subjectGroup = subject?.subjectGroup || ''
+  /** 과목을 골랐거나 직접 적었는가 — 평가표를 올리기 전에 반드시 정해야 한다 */
+  const subjectReady = !!subject || subjectName.trim() !== ''
+  const SUBJECT_FIRST = '과목을 먼저 골라 주세요. 위원 평가표의 출판사 이름을 교과서 자료 표기에 맞추고 과목이 맞는지 확인하는 데 필요합니다.'
 
   const latest = useRef<Summary | null>(null)
   const update = (patch: Partial<Summary> | ((prev: Summary) => Partial<Summary>)) => {
@@ -156,9 +159,16 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const addFiles = async (files: FileList | File[] | null) => {
     const list = files ? Array.from(files) : []
     if (!list.length) return
+    if (!subjectReady) return setMsg({ type: 'warn', text: SUBJECT_FIRST })
     setMsg(null)
     const { members: got, errors } = await importMemberFiles(list, setProgress, members)
     setProgress(null)
+    // 올린 평가표의 과목이 고른 과목과 다르면 알려 준다 (다른 과목 파일이 섞이는 실수 방지)
+    const chosen = squeezeName(subject?.name || subjectName)
+    for (const m of got) {
+      const got1 = m.evaluation?.subjectName || ''
+      if (got1 && chosen && squeezeName(got1) !== chosen) m.warnings.unshift(`평가표의 과목은 '${got1}' 인데 고른 과목은 '${subject?.name || subjectName.trim()}' 입니다. 파일이 맞는지 확인해 주세요.`)
+    }
     // 의견서만 온 파일이 기존 위원에 붙었을 수도 있으므로 목록을 새로 그린다
     setMembers((prev) => [...prev, ...got])
     if (got.length) {
@@ -176,6 +186,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
   }
 
   const addManual = () => {
+    if (!subjectReady) return setMsg({ type: 'warn', text: SUBJECT_FIRST })
     const name = prompt('직접 추가할 위원 이름을 입력하세요.')
     if (!name?.trim()) return
     setMembers((prev) => [...prev, { id: uid(), teacherName: name.trim(), source: 'manual', warnings: ['점수를 직접 입력해야 합니다.'] }])
@@ -421,10 +432,10 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
             <h3 style={{ marginTop: 16 }}>위원 평가표 ({members.length})</h3>
             <div
-              className={`dropzone sm ${dragOver ? 'over' : ''}`}
+              className={`dropzone sm ${dragOver ? 'over' : ''} ${subjectReady ? '' : 'locked'}`}
               onDragOver={(e) => {
                 e.preventDefault()
-                setDragOver(true)
+                if (subjectReady) setDragOver(true)
               }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {
@@ -433,11 +444,22 @@ export function Compile({ go }: { go: (h: string) => void }) {
                 addFiles(e.dataTransfer.files)
               }}
             >
-              <p>위원들이 보낸 평가표 PDF를 끌어다 놓거나</p>
-              <label className="btn primary sm">
-                + 추가하기
-                <input type="file" accept="application/pdf,.pdf" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
-              </label>
+              {subjectReady ? (
+                <>
+                  <p>위원들이 보낸 평가표 PDF를 끌어다 놓거나</p>
+                  <label className="btn primary sm">
+                    + 추가하기
+                    <input type="file" accept="application/pdf,.pdf" multiple style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <p>
+                    <b>과목을 먼저 골라 주세요.</b>
+                  </p>
+                  <p className="muted">과목이 정해지면 여기에 위원 평가표 PDF를 올릴 수 있습니다.</p>
+                </>
+              )}
             </div>
 
             {members.length > 0 && (
@@ -465,7 +487,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                 <button className="btn primary" onClick={generate} disabled={!members.length}>
                   총괄표 생성하기
                 </button>
-                <button className="btn sm" onClick={addManual}>
+                <button className="btn sm" onClick={addManual} disabled={!subjectReady} title={subjectReady ? undefined : '과목을 먼저 골라 주세요'}>
                   위원 직접 추가
                 </button>
               </div>
