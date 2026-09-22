@@ -3,7 +3,7 @@ import type { DocPublisher, Person, SchoolLevel, Summary, SummaryMember, Summary
 import { uid } from '../seed'
 import { fmtDate, useAppData } from '../store/useAppData'
 import { lsGet, lsSet } from '../store/storage'
-import { columnTotal, computeSummary, criteriaFor } from '../lib/scoring'
+import { columnTotal, computeSummary, criteriaFor, publishersFor } from '../lib/scoring'
 import { downloadText, readFileText } from '../lib/csv'
 import { printSheetsInTurn } from '../lib/print'
 import { hwpxWarning, saveCompileHwpx } from '../lib/hwpxDoc'
@@ -183,16 +183,22 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
   const removeMember = (id: string) => setMembers((prev) => prev.filter((m) => m.id !== id))
 
-  /** 올린 위원들의 출판사 합집합 (이름 기준, 먼저 올라온 순서) */
+  /**
+   * 올린 위원들의 출판사 합집합 (이름 기준, 먼저 올라온 순서).
+   * PDF 에서 읽은 이름은 칸이 좁아 줄이 접히면 띄어쓰기가 사라지므로,
+   * 고른 과목의 교과서 자료에 같은 이름이 있으면 그 표기를 쓴다.
+   */
   const mergedPublishers = useMemo<DocPublisher[]>(() => {
+    const official = subjectId ? publishersFor(master, subjectId) : []
+    const spell = (name: string) => official.find((o) => squeezeName(o.name) === squeezeName(name))?.name || name
     const out: DocPublisher[] = []
     for (const m of members) {
       for (const p of m.evaluation?.publishers || []) {
-        if (!out.some((x) => squeezeName(x.name) === squeezeName(p.name))) out.push({ id: uid(), name: p.name })
+        if (!out.some((x) => squeezeName(x.name) === squeezeName(p.name))) out.push({ id: uid(), name: spell(p.name) })
       }
     }
     return out
-  }, [members])
+  }, [members, master, subjectId])
 
   const existing = summaries.find((s) => (subjectId ? s.subjectId === subjectId : s.subjectName === subjectName))
 

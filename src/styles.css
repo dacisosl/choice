@@ -423,6 +423,7 @@ td.num { text-align: center; }
 /* 출판사명은 길어서 고르는 칸에 넣으면 인쇄할 때 잘린다. 인쇄에는 글자를 내보낸다 */
 .form-sheet td.pub-cell .pub-print { display: none; }
 .form-sheet td.pub-cell .pub-pick { width: 100%; height: auto; padding: 2px 16px 2px 2px; border: none; background-color: transparent; text-align: center; font-family: inherit; font-size: inherit; color: inherit; }
+.form-sheet table.form th.pub-th span { display: block; line-height: 1.25; }
 .form-sheet table.form td.opinion { height: 80px; vertical-align: top; text-align: left; white-space: pre-wrap; line-height: 1.6; }
 .form-sheet table.form td.opinion.tall { min-height: 110px; }
 .form-sheet .sign-block { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 11pt; }

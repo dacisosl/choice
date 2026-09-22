@@ -17,6 +17,12 @@ interface Props {
   onOpinionClick?: () => void
 }
 
+/** '㈜천재교과서(임성숙)' 처럼 대표저자가 붙은 이름은 줄을 나눠 이름이 중간에서 끊기지 않게 한다 */
+function splitPubName(name: string): string[] {
+  const m = name.match(/^(.+?)\s*(\([^()]*\))$/)
+  return m ? [m[1], m[2]] : [name]
+}
+
 /** 【서식1】 검정(인정)도서 선정 평가표 — A4 가로 */
 export function Form1Sheet({ subjectName, teacherName, criteria, publishers, scores, opinion, readOnly, onScoreChange, onOpinionChange, onOpinionClick }: Props) {
   const N = publishers.length
@@ -32,6 +38,8 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
   }
 
   const pubColWidth = N ? Math.max(48, Math.floor(520 / N)) : 60
+  // 출판사가 많을수록 이름 칸이 좁아진다 — 글자를 조금 줄여 이름이 덜 쪼개지게 한다
+  const pubFont = N >= 12 ? '7.5pt' : N >= 9 ? '8.5pt' : '9.5pt'
   /** 지금 고치는 중인 점수 칸 (합계 미리 보기용) */
   const [draft, setDraft] = useState<{ pubId: string; critId: string; value: number } | null>(null)
 
@@ -78,8 +86,10 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
           </tr>
           <tr>
             {publishers.map((p) => (
-              <th key={p.id} style={{ fontSize: '9.5pt' }}>
-                {p.name}
+              <th key={p.id} className="pub-th" style={{ fontSize: pubFont }}>
+                {splitPubName(p.name).map((part, k) => (
+                  <span key={k}>{part}</span>
+                ))}
               </th>
             ))}
             {N === 0 && <th>출판사 미등록</th>}
