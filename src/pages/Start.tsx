@@ -98,7 +98,7 @@ export function Start({ go }: { go: (h: string) => void }) {
         <button className="cta-tall" onClick={() => go('personal')}>
           <span className="cta-tall-label">여기를 눌러 시작하세요</span>
           <span className="cta-tall-title">
-            서류 초안
+            선정 평가표
             <br />
             작성하기
           </span>
@@ -107,7 +107,10 @@ export function Start({ go }: { go: (h: string) => void }) {
           </span>
         </button>
         <button className="chip-pill" onClick={() => go('compile')}>
-          <span className="chip-sub">총괄 작성 교사라면</span> 평가총괄표 작성 <span aria-hidden="true">→</span>
+          <span className="chip-sub">총괄 작성 교사라면</span>
+          <span className="chip-main">
+            총괄표·추천 의견서 생성 <span aria-hidden="true">→</span>
+          </span>
         </button>
         <div className="hero-links">
           <button className="hero-guide" onClick={() => go('guide')}>

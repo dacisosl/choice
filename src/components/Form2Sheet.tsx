@@ -10,15 +10,16 @@ interface Props {
   matrix: Record<string, Record<string, number>>
   headerMode: 'name' | 'number'
   decimals: number
-  writer: Person
-  checker: Person
+  /** 예전 호출부 호환용 — 서명란은 손으로 쓰도록 늘 비워 둔다 */
+  writer?: Person
+  checker?: Person
   readOnly?: boolean
   sortByAverage?: boolean
   onCellChange?: (pubId: string, memberId: string, v: number) => void
 }
 
 /** 【서식2】 검정(인정)도서 선정기준 평가 총괄표 — A4 세로 */
-export function Form2Sheet({ subjectName, publishers, members, matrix, headerMode, decimals, writer, checker, readOnly, sortByAverage, onCellChange }: Props) {
+export function Form2Sheet({ subjectName, publishers, members, matrix, headerMode, decimals, readOnly, sortByAverage, onCellChange }: Props) {
   const memberIds = members.map((m) => m.id)
   const pubIds = publishers.map((p) => p.id)
   /** 지금 고치는 중인 점수 칸 (총점·평균·순위 미리 보기용) */
@@ -99,13 +100,13 @@ export function Form2Sheet({ subjectName, publishers, members, matrix, headerMod
       <div className="sign-block">
         <div className="line">
           <span className="k">작성자</span>
-          <span>직 <span className="fill">{writer.position}</span></span>
-          <span>성명 <span className="fill">{writer.name}</span> (인)</span>
+          <span>직 <span className="fill" /></span>
+          <span>성명 <span className="fill name" /> (인)</span>
         </div>
         <div className="line">
           <span className="k">확인자</span>
-          <span>직 <span className="fill">{checker.position}</span></span>
-          <span>성명 <span className="fill">{checker.name}</span> (인)</span>
+          <span>직 <span className="fill" /></span>
+          <span>성명 <span className="fill name" /> (인)</span>
         </div>
       </div>
       <div className="footnote">※ 작성자는 교과협의회 소속교사, 확인자는 교과협의회 대표교사로 함</div>

@@ -230,6 +230,10 @@ input[type='checkbox'] { accent-color: var(--primary); }
   transition: background .15s, color .15s, transform .12s;
 }
 .chip-pill .chip-sub { font-weight: 500; color: var(--muted); }
+/* 두 줄 알약: 위는 누구를 위한 단추인지, 아래는 하는 일 */
+.chip-pill:has(.chip-main) { flex-direction: column; gap: 1px; height: auto; padding: 7px 18px 8px; }
+.chip-pill:has(.chip-main) .chip-sub { font-size: 12px; }
+.chip-pill .chip-main { white-space: nowrap; }
 .chip-pill:hover { background: var(--primary); border-color: var(--primary); color: #fff; transform: translateY(-1px); }
 .chip-pill:hover .chip-sub { color: rgba(255, 255, 255, 0.8); }
 
@@ -433,6 +437,8 @@ html[data-route="home"] .site-foot {
 .form-sheet table.form td.pending { color: #2f5d4b; background: #eef4f0; }
 /* 출판사명은 길어서 고르는 칸에 넣으면 인쇄할 때 잘린다. 인쇄에는 글자를 내보낸다 */
 .form-sheet td.pub-cell .pub-print { display: none; }
+/* 총괄표에서 동점이라 순위를 가를 수 없는 칸 — 화면에서만 표시 */
+.form-sheet td.pub-cell.tie { background: #fff6dd; }
 .form-sheet td.pub-cell .pub-pick { width: 100%; height: auto; padding: 2px 16px 2px 2px; border: none; background-color: transparent; text-align: center; font-family: inherit; font-size: inherit; color: inherit; }
 .form-sheet table.form th.pub-th span { display: block; line-height: 1.25; }
 .form-sheet table.form td.opinion { height: 80px; vertical-align: top; text-align: left; white-space: pre-wrap; line-height: 1.6; }
@@ -440,7 +446,8 @@ html[data-route="home"] .site-foot {
 .form-sheet .sign-block { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; font-size: 11pt; }
 .form-sheet .sign-block .line { display: flex; gap: 18px; align-items: center; }
 .form-sheet .sign-block .line .k { width: 56px; font-weight: 600; }
-.form-sheet .sign-block .fill { display: inline-block; min-width: 62px; }
+.form-sheet .sign-block .fill { display: inline-block; min-width: 72px; }
+.form-sheet .sign-block .fill.name { min-width: 96px; } /* 손으로 이름을 쓸 자리 */
 .form-sheet .footnote { margin-top: 10px; font-size: 10pt; }
 .form-sheet .form-head .sign { display: inline-flex; gap: 6px; align-items: baseline; }
 .form-sheet .form-head .sign .name { min-width: 70px; display: inline-block; text-align: center; }
@@ -500,6 +507,11 @@ html[data-route="home"] .site-foot {
 .side-members { margin-top: 6px; }
 .dropzone.sm { padding: 14px 12px; border-radius: 10px; }
 .dropzone.sm p { margin: 0 0 8px; font-size: 12.5px; }
+/* 총괄표 위 '확인할 점' 접이식 목록 */
+.check-list { margin: 0 0 10px; padding: 8px 12px; border: 1px solid #ecd9a8; border-radius: 10px; background: #fffaf0; font-size: 13px; }
+.check-list summary { cursor: pointer; font-weight: 700; color: #7a5a12; }
+.check-list ul { margin: 8px 0 2px; padding-left: 18px; }
+.check-list li { margin-bottom: 4px; line-height: 1.55; color: var(--text); word-break: keep-all; }
 .dropzone.locked { border-style: dotted; background: var(--sur); color: var(--text-2); }
 .dropzone.locked p { margin: 0 0 4px; }
 .dropzone.locked p b { color: var(--title); }
@@ -768,6 +780,7 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   .form-sheet table.form th, .form-sheet table.form td { font-size: 10pt; }
   /* 고르는 칸(select)은 이름이 길면 잘리므로 인쇄에는 글자만 내보낸다 */
   .form-sheet td.pub-cell .pub-pick { display: none !important; }
+  .form-sheet td.pub-cell.tie { background: none !important; }
   .form-sheet td.pub-cell .pub-print { display: block !important; line-height: 1.35; }
   .form-sheet table.form { break-inside: auto; }
   td.editable:hover { background: inherit; }

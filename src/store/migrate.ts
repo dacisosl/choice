@@ -71,6 +71,7 @@ export function migrateEvaluation(raw: unknown, master: Master): Evaluation | nu
 export function migrateSummary(raw: unknown): Summary | null {
   if (!raw || typeof raw !== 'object') return null
   const s = raw as Partial<Summary>
-  if (!s.id || !s.subjectId || !s.members || !s.publishers) return null
+  // 목록에 없어 직접 적은 과목은 subjectId 가 빈 글자다 — 그것도 온전한 총괄표로 남긴다
+  if (!s.id || typeof s.subjectId !== 'string' || !s.subjectName || !s.members || !s.publishers) return null
   return s as Summary
 }

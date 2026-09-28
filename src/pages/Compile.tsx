@@ -18,11 +18,11 @@ import { SheetFit } from '../components/SheetFit'
 import { HwpIcon, PrinterIcon } from '../components/Icons'
 import { NoticeModal } from '../components/NoticeModal'
 
-const STEPS = ['점수표 올리기', '총괄표 확인', '인쇄·저장']
+const STEPS = ['평가 총괄표', '추천 의견서']
 const SCHOOL_KEY = 'choice.schoolLevel'
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 안내 창: 점수 수정 제한 / 인쇄 전 확인 */
-type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void } | null
+type Notice = { title: string; tone: 'warn' | 'info'; lines: string[]; confirmLabel?: string; onConfirm?: () => void; closeLabel?: string } | null
 
 const DRAFT_NOTE = '올린 평가표에서 계산한 초안입니다. 원본과 대조해 확인해 주세요.'
 
@@ -38,7 +38,6 @@ function totalOf(member: SummaryMember, pubName: string): number | null {
 export function Compile({ go }: { go: (h: string) => void }) {
   const { master, summaries, saveSummary, deleteSummary } = useAppData()
   const [step, setStep] = useState(0)
-  const [writerName, setWriterName] = useState('')
   const [subjectId, setSubjectId] = useState('')
   const [subjectName, setSubjectName] = useState('')
   const [members, setMembers] = useState<SummaryMember[]>([])
@@ -57,7 +56,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const [sideOpen, setSideOpen] = useState(true)
   const saveTimer = useRef<number | null>(null)
 
-  // 좁은 화면: 올리기가 끝난 단계(2·3단계)에서는 입력 칸을 접어 문서가 바로 보이게 한다
+  // 좁은 화면: 추천 의견서 단계에서는 입력 칸을 접어 문서가 바로 보이게 한다
   useEffect(() => {
     if (!window.matchMedia('(max-width: 760px)').matches) return
     setSideOpen(step === 0)
@@ -70,14 +69,17 @@ export function Compile({ go }: { go: (h: string) => void }) {
   const SUBJECT_FIRST = '과목을 먼저 골라 주세요. 위원 평가표의 출판사 이름을 교과서 자료 표기에 맞추고 과목이 맞는지 확인하는 데 필요합니다.'
 
   const latest = useRef<Summary | null>(null)
-  const update = (patch: Partial<Summary> | ((prev: Summary) => Partial<Summary>)) => {
-    const prev = latest.current
-    if (!prev) return
-    const next = { ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) }
+  /** 화면에 반영하고 잠시 뒤 저장한다 */
+  const commit = (next: Summary) => {
     latest.current = next
     setSum(next)
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => saveSummary(next).catch((e) => setMsg({ type: 'error', text: `저장 실패: ${e.message}` })), 800)
+  }
+  const update = (patch: Partial<Summary> | ((prev: Summary) => Partial<Summary>)) => {
+    const prev = latest.current
+    if (!prev) return
+    commit({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) })
   }
 
   /** 위원 한 명이 줄 수 있는 최고 점수 (평가기준 배점의 합, 기본 100) */
@@ -144,11 +146,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
         members: sum.members,
         matrix: sum.matrix,
         decimals: master.settings.averageDecimals,
-        writer: sum.writer,
-        checker: sum.checker,
         recommendDoc: sum.recommendDoc,
-        recommendWriter: sum.recommendWriter,
-        recommendChecker: sum.recommendChecker,
       })
     } catch (e) {
       setMsg({ type: 'error', text: `한글 파일을 만들지 못했습니다. ${(e as Error).message}` })
@@ -171,14 +169,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
     }
     // 의견서만 온 파일이 기존 위원에 붙었을 수도 있으므로 목록을 새로 그린다
     setMembers((prev) => [...prev, ...got])
-    if (got.length) {
-      const name = got.find((m) => m.evaluation?.subjectName)?.evaluation?.subjectName || ''
-      if (name && !subjectId) {
-        const hit = master.subjects.find((s) => s.name === name)
-        if (hit) setSubjectId(hit.id)
-        setSubjectName(name)
-      }
-    }
+    // 과목은 먼저 고른 것을 그대로 쓴다 — 평가표의 과목이 다르면 위에서 경고만 붙인다
     const parts: string[] = []
     if (got.length) parts.push(`${got.length}명의 평가표를 읽었습니다.`)
     if (errors.length) parts.push(`읽지 못한 파일 ${errors.length}개: ${errors.map((e) => `${e.file} (${e.reason})`).join(' / ')}`)
@@ -213,57 +204,60 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
   const existing = summaries.find((s) => (subjectId ? s.subjectId === subjectId : s.subjectName === subjectName))
 
-  const generate = async () => {
+  /**
+   * 올린 위원들로 총괄표를 만든다 — 위원을 올리거나 뺄 때마다 저절로 다시 만든다.
+   * 손으로 고친 점수 칸과 추천 의견서는 (출판사 이름, 위원)이 같으면 그대로 이어받는다.
+   */
+  const rebuild = (list: SummaryMember[], base: Summary | null) => {
     const name = subject?.name || subjectName.trim()
-    if (!name) return setMsg({ type: 'warn', text: '과목을 선택하거나 과목명을 입력하세요.' })
-    if (!members.length) return setMsg({ type: 'warn', text: '위원 평가표 PDF를 먼저 올리세요.' })
-    if (!mergedPublishers.length) return setMsg({ type: 'warn', text: '출판사를 읽지 못했습니다. 위원이 [인쇄 / PDF 저장]으로 만든 파일인지 확인해 주세요.' })
-    if (members.length < 3 && !confirm(`위원이 ${members.length}명입니다. 계획서는 3인 이상을 권장합니다(소규모 학교 2인 가능). 그대로 만들까요?`)) return
-    if (existing && !confirm('이 과목의 총괄표가 이미 있습니다. 올린 점수표로 다시 만들까요? (취소하면 기존 총괄표를 엽니다)')) {
-      return loadExisting(existing)
-    }
-
-    const warned: SummaryMember[] = members.map((m) => ({ ...m, warnings: [...m.warnings] }))
+    if (!name || !list.length || !mergedPublishers.length) return
+    // 다른 과목으로 바꿨으면 앞 과목의 총괄표를 이어받지 않는다
+    if (base && (base.subjectId || '') !== (subject?.id || '')) base = null
+    const same = (a: string, b: string) => squeezeName(a) === squeezeName(b)
+    // 출판사 id 는 이름이 같으면 이전 것을 그대로 쓴다 (추천 의견서 순위 연결이 끊기지 않게)
+    const publishers = mergedPublishers.map((p) => {
+      const old = base?.publishers.find((o) => same(o.name, p.name))
+      return old ? { ...p, id: old.id } : p
+    })
     const matrix: Summary['matrix'] = {}
-    for (const pub of mergedPublishers) {
+    for (const pub of publishers) {
       matrix[pub.id] = {}
-      warned.forEach((m) => {
-        const t = totalOf(m, pub.name)
-        matrix[pub.id][m.id] = t ?? 0
-        if (t === null && m.source !== 'manual') m.warnings.push(`'${pub.name}' 점수가 없어 0으로 두었습니다. 표에서 직접 고칠 수 있습니다.`)
-      })
+      for (const m of list) {
+        const kept = base?.matrix[pub.id]?.[m.id]
+        matrix[pub.id][m.id] = typeof kept === 'number' ? kept : totalOf(m, pub.name) ?? 0
+      }
     }
-
-    const comp = computeSummary(matrix, mergedPublishers.map((p) => p.id), warned.map((m) => m.id), master.settings.averageDecimals)
-    const ordered = [...mergedPublishers].sort((a, b) => comp.ranks[a.id] - comp.ranks[b.id])
-    const recommendDoc: SummaryRecommend[] = [1, 2, 3].map((r) => ({
-      rank: r as 1 | 2 | 3,
-      pubId: ordered[r - 1]?.id || null,
-      text: existing?.recommendDoc.find((x) => x.rank === r)?.text || '',
-    }))
-
-    const writer: Person = { position: '교사', name: writerName.trim() }
+    const blank: Person = { position: '', name: '' }
     const next: Summary = {
-      id: existing?.id || uid(),
+      id: base?.id || existing?.id || uid(),
       subjectId: subject?.id || '',
       subjectName: name,
-      publishers: mergedPublishers,
-      members: warned,
+      publishers,
+      members: list,
       matrix,
-      writer,
-      checker: existing?.checker || { position: '교사', name: '' },
-      recommendDoc,
-      recommendWriter: existing?.recommendWriter || writer,
-      recommendChecker: existing?.recommendChecker || { position: '교감', name: '' },
+      writer: blank,
+      checker: blank,
+      recommendDoc: base?.recommendDoc || ([1, 2, 3] as const).map((r) => ({ rank: r, pubId: null, text: '' })),
+      recommendWriter: blank,
+      recommendChecker: blank,
       updatedAt: new Date().toISOString(),
     }
-    await saveSummary(next)
-    latest.current = next
-    setSum(next)
-    setMembers(warned)
-    setStep(1)
-    setMsg({ type: 'info', text: `위원 ${warned.length}명·출판사 ${mergedPublishers.length}곳으로 총괄표를 만들었습니다. 숫자를 확인하고 필요하면 표에서 고치세요.` })
+    commit(next)
   }
+
+  // 위원 목록·과목이 바뀌면 총괄표를 다시 만든다. 위원이 모두 빠지면 표를 내린다(저장본은 그대로).
+  useEffect(() => {
+    if (!subjectReady || !members.length) {
+      if (!members.length && latest.current) {
+        latest.current = null
+        setSum(null)
+        setStep(0)
+      }
+      return
+    }
+    rebuild(members, latest.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members, mergedPublishers, subjectReady])
 
   const loadExisting = (s: Summary) => {
     latest.current = s
@@ -271,17 +265,119 @@ export function Compile({ go }: { go: (h: string) => void }) {
     setMembers(s.members)
     setSubjectId(s.subjectId)
     setSubjectName(s.subjectName)
-    setWriterName(s.writer.name)
-    setStep(1)
+    setStep(0)
     setMsg(null)
   }
 
-  const autoRank = () => {
-    if (!sum) return
+  // 저장된 총괄표가 있는 과목을 고르면 이어서 열지 먼저 묻는다 (아직 올린 위원이 없을 때만)
+  const askedFor = useRef('')
+  useEffect(() => {
+    if (!existing || members.length || sum || askedFor.current === existing.id) return
+    askedFor.current = existing.id
+    setNotice({
+      title: '이 과목의 총괄표가 저장되어 있습니다',
+      tone: 'info',
+      lines: [
+        `${existing.subjectName} · 위원 ${existing.members.length}명 · ${fmtDate(existing.updatedAt)} 저장`,
+        '[이어서 열기]를 누르면 저장된 총괄표와 추천 의견서를 그대로 엽니다.',
+        '새로 만들려면 창을 닫고 평가표 PDF를 올리세요. 새 총괄표가 저장본을 대신합니다.',
+      ],
+      confirmLabel: '이어서 열기',
+      onConfirm: () => {
+        setNotice(null)
+        loadExisting(existing)
+      },
+      closeLabel: '새로 만들기',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existing?.id, members.length, sum])
+
+  /** 평가 결과(총괄표)에서 1~3순위 자리마다 들어갈 수 있는 출판사 */
+  const rankSlots = useMemo(() => {
+    if (!sum) return [] as { rank: 1 | 2 | 3; fixed: string | null; choices: string[] | null }[]
     const comp = computeSummary(sum.matrix, sum.publishers.map((p) => p.id), sum.members.map((m) => m.id), master.settings.averageDecimals)
     const ordered = [...sum.publishers].sort((a, b) => comp.ranks[a.id] - comp.ranks[b.id])
-    update({ recommendDoc: sum.recommendDoc.map((r) => ({ ...r, pubId: ordered[r.rank - 1]?.id || null })) })
+    return ([1, 2, 3] as const).map((r) => {
+      const at = ordered[r - 1]
+      if (!at) return { rank: r, fixed: null, choices: null }
+      const group = ordered.filter((p) => comp.ranks[p.id] === comp.ranks[at.id])
+      // 평균이 같은 출판사가 여럿이면 이 자리는 서류만 보고 정할 수 없다 → 그 출판사들 중에서 고르게 한다
+      return group.length > 1 ? { rank: r, fixed: null, choices: group.map((p) => p.id) } : { rank: r, fixed: at.id, choices: null }
+    })
+  }, [sum, master.settings.averageDecimals])
+
+  /**
+   * 추천 의견서 순위를 총괄표 순위에 맞춘다 (의견서 단계에 들어올 때마다).
+   * 출판사가 바뀐 순위의 의견 글은 다른 출판사 이야기이므로 비운다.
+   */
+  const syncRanks = () => {
+    const cur = latest.current
+    if (!cur) return
+    const cleared: number[] = []
+    const ties: number[] = []
+    const recommendDoc = cur.recommendDoc.map((row) => {
+      const slot = rankSlots.find((x) => x.rank === row.rank)
+      let pubId: string | null = row.pubId
+      if (!slot || (!slot.fixed && !slot.choices)) pubId = null
+      else if (slot.fixed) pubId = slot.fixed
+      else {
+        ties.push(row.rank)
+        if (!pubId || !slot.choices!.includes(pubId)) pubId = null
+      }
+      if (pubId !== row.pubId && row.text.trim()) cleared.push(row.rank)
+      return pubId === row.pubId ? row : { ...row, pubId, text: pubId !== row.pubId ? '' : row.text }
+    })
+    if (recommendDoc.some((r, i) => r !== cur.recommendDoc[i])) update({ recommendDoc })
+    const notes: string[] = []
+    if (cleared.length) notes.push(`총괄표 순위가 바뀌어 ${cleared.join('·')}순위 의견을 비웠습니다.`)
+    if (ties.length) notes.push(`평균이 같아 총괄표만으로는 ${ties.join('·')}순위를 정할 수 없습니다 — 노란 칸에서 출판사를 확인하거나 골라 주세요.`)
+    setMsg(notes.length ? { type: 'warn', text: notes.join(' ') } : null)
   }
+
+  /**
+   * 동점 자리에서 출판사를 고른다.
+   * 고른 곳이 같은 동점 무리의 다른 자리에 있으면 두 자리를 맞바꾸고,
+   * 무리에 빈 자리가 하나만 남으면 남은 출판사를 채운다. 출판사가 바뀐 자리의 의견 글은 비운다.
+   */
+  const pickTie = (rank: number, pubId: string) => {
+    update((prev) => {
+      const slot = rankSlots.find((x) => x.rank === rank)
+      const chosen = pubId || null
+      const mine = prev.recommendDoc.find((r) => r.rank === rank)?.pubId || null
+      const other = chosen ? prev.recommendDoc.find((r) => r.rank !== rank && r.pubId === chosen) : undefined
+      const put = (r: SummaryRecommend, id: string | null) => (r.pubId === id ? r : { ...r, pubId: id, text: '' })
+      let doc = prev.recommendDoc.map((r) => (r.rank === rank ? put(r, chosen) : other && r.rank === other.rank ? put(r, mine) : r))
+      if (slot?.choices) {
+        const group = rankSlots.filter((x) => x.choices && x.choices.join() === slot.choices!.join())
+        const empty = group.filter((x) => !doc.find((r) => r.rank === x.rank)?.pubId)
+        const left = slot.choices.filter((id) => !doc.some((r) => r.pubId === id))
+        if (empty.length === 1 && left.length === 1) doc = doc.map((r) => (r.rank === empty[0].rank ? put(r, left[0]) : r))
+      }
+      return { recommendDoc: doc }
+    })
+  }
+
+  /** 그 순위에서 고를 수 있는 출판사 (동점 자리만 — 같은 무리 전체, 고르면 맞바꾼다) */
+  const pickable = (rank: number): string[] | null => rankSlots.find((x) => x.rank === rank)?.choices || null
+
+  const goStep = (i: number) => {
+    if (!sum) return
+    if (i === 1) syncRanks()
+    else setMsg(null)
+    setStep(i)
+  }
+
+  /** 점수를 직접 넣어야 하는 칸 (그 위원 평가표에 이 출판사가 없을 때) */
+  const missing = useMemo(() => {
+    if (!sum) return [] as string[]
+    const out: string[] = []
+    for (const m of sum.members) {
+      if (m.source === 'manual') continue
+      const lost = sum.publishers.filter((p) => totalOf(m, p.name) === null).map((p) => p.name)
+      if (lost.length) out.push(`${m.teacherName}: ${lost.join(', ')} 점수가 평가표에 없어 0으로 두었습니다. 표에서 고칠 수 있습니다.`)
+    }
+    return out
+  }, [sum])
 
   const removeSaved = async (s: Summary) => {
     if (!confirm(`${s.subjectName} 총괄표를 삭제할까요? 되돌릴 수 없습니다.`)) return
@@ -354,7 +450,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
             <span
               key={s}
               className={`step ${i === step ? 'active' : i < step ? 'done' : ''}`}
-              onClick={() => sum && setStep(i)}
+              onClick={() => goStep(i)}
               style={{ cursor: sum ? 'pointer' : 'default' }}
               title={sum ? `저장됨 ${fmtDate(sum.updatedAt)}` : undefined}
             >
@@ -380,10 +476,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
         <aside className={`work-side no-print ${sideOpen ? '' : 'closed'}`}>
           <div className="card side-card">
             <h3>기본정보</h3>
-            <label className="field">
-              작성자 이름
-              <input type="text" value={writerName} onChange={(e) => setWriterName(e.target.value)} placeholder="홍길동" />
-            </label>
             <div className="field">
               학교
               <div className="seg">
@@ -484,9 +576,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
             {step === 0 && (
               <div className="side-actions">
-                <button className="btn primary" onClick={generate} disabled={!members.length}>
-                  총괄표 생성하기
-                </button>
                 <button className="btn sm" onClick={addManual} disabled={!subjectReady} title={subjectReady ? undefined : '과목을 먼저 골라 주세요'}>
                   위원 직접 추가
                 </button>
@@ -519,65 +608,56 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
         {/* 오른쪽: 서식 */}
         <div className="work-main">
-          {step === 0 && (
-            <div className="card">
-              <h2>올린 평가표</h2>
-              {members.length === 0 ? (
-                <p className="muted small">입력 칸의 [+ 추가하기]로 위원들이 보낸 평가표 PDF를 올리세요. 파일에서 위원명·출판사·점수를 읽어 옵니다.</p>
-              ) : (
-                <div className="scroll-x">
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        <th>위원</th>
-                        <th style={{ width: 70 }}>출처</th>
-                        <th style={{ width: 70 }}>출판사</th>
-                        <th>확인할 점</th>
-                        <th style={{ width: 60 }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {members.map((m) => (
-                        <tr key={m.id}>
-                          <td>{m.teacherName}</td>
-                          <td>
-                            {m.source === 'pdf' && <span className="badge ok">PDF</span>}
-                            {m.source === 'pdf-ocr' && <span className="badge warn">스캔</span>}
-                            {m.source === 'json' && <span className="badge info">파일</span>}
-                            {m.source === 'manual' && <span className="badge gray">직접</span>}
-                          </td>
-                          <td>{m.evaluation?.publishers.length ?? '-'}</td>
-                          <td className="small muted">{m.warnings.length ? m.warnings.join(' ') : '-'}</td>
-                          <td>
-                            <button className="btn sm danger" onClick={() => removeMember(m.id)}>
-                              삭제
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+          {!sum && (
+            <div className="card empty-hint">
+              <h2>평가 총괄표</h2>
+              <p className="muted small">
+                {subjectReady
+                  ? '입력 칸의 [+ 추가하기]로 위원들이 보낸 선정 평가표 PDF를 올리세요. 올리는 대로 위원명·출판사·점수를 읽어 총괄표를 바로 만듭니다.'
+                  : '먼저 학교와 과목을 고른 뒤, 위원들이 보낸 선정 평가표 PDF를 올리세요. 올리는 대로 총괄표가 만들어집니다.'}
+              </p>
             </div>
           )}
 
-          {sum && step === 1 && (
+          {sum && step === 0 && (
             <>
               <div className="card">
                 <div className="main-head">
                   <h2>평가 총괄표</h2>
                   <span className="ai-note">{DRAFT_NOTE}</span>
                   <div className="main-head-actions">
-                    <button className="btn" onClick={() => setStep(0)}>
-                      이전
+                    <button className="btn" onClick={() => askPrint('form2')}>
+                      <PrinterIcon /> 총괄표 인쇄 · PDF
                     </button>
-                    <button className="btn primary" onClick={() => setStep(2)}>
-                      다음: 인쇄·저장
+                    <button className="btn primary" onClick={() => goStep(1)}>
+                      다음: 추천 의견서
                     </button>
                   </div>
                 </div>
-                <p className="muted small">셀을 클릭하면 점수를 고칠 수 있고 총점·평균·순위가 다시 계산됩니다.</p>
+                <p className="muted small">
+                  위원 평가표를 더 올리거나 빼면 표가 바로 다시 만들어집니다. 칸을 클릭하면 점수를 고칠 수 있고, 고친 칸은 위원을 더 올려도 그대로 남습니다. 아래
+                  작성자·확인자 칸은 인쇄한 뒤 손으로 적어 주세요.
+                </p>
+                {sum.members.length < 3 && (
+                  <p className="alert warn small">위원이 {sum.members.length}명입니다. 계획서는 3인 이상을 권장합니다(소규모 학교는 2인 가능).</p>
+                )}
+                {(missing.length > 0 || sum.members.some((m) => m.warnings.length)) && (
+                  <details className="check-list">
+                    <summary>확인할 점 {missing.length + sum.members.filter((m) => m.warnings.length).length}건</summary>
+                    <ul>
+                      {sum.members
+                        .filter((m) => m.warnings.length)
+                        .map((m) => (
+                          <li key={m.id}>
+                            <b>{m.teacherName}</b>: {m.warnings.join(' ')}
+                          </li>
+                        ))}
+                      {missing.map((t, i) => (
+                        <li key={`miss-${i}`}>{t}</li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <p className="swipe-hint">표가 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
                 <div className="actions" style={{ marginTop: 0 }}>
                   <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -599,30 +679,10 @@ export function Compile({ go }: { go: (h: string) => void }) {
                     matrix={sum.matrix}
                     headerMode={master.settings.memberHeaderMode}
                     decimals={master.settings.averageDecimals}
-                    writer={sum.writer}
-                    checker={sum.checker}
                     sortByAverage={sortByAvg}
                     onCellChange={changeCell}
                   />
                 </SheetFit>
-                <div className="row">
-                  <label className="field">
-                    작성자 직
-                    <input type="text" value={sum.writer.position} onChange={(e) => update({ writer: { ...sum.writer, position: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    작성자 성명
-                    <input type="text" value={sum.writer.name} onChange={(e) => update({ writer: { ...sum.writer, name: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    확인자 직
-                    <input type="text" value={sum.checker.position} onChange={(e) => update({ checker: { ...sum.checker, position: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    확인자 성명
-                    <input type="text" value={sum.checker.name} onChange={(e) => update({ checker: { ...sum.checker, name: e.target.value } })} />
-                  </label>
-                </div>
               </div>
 
               {viewMember?.evaluation && (
@@ -647,63 +707,19 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   </SheetFit>
                 </div>
               )}
-
-              <div className="card">
-                <h2>추천 의견서</h2>
-                <p className="muted small">순위는 평균으로 자동 산출되며 출판사 칸에서 바꿀 수 있습니다. 의견 칸을 클릭하면 위원 의견을 종합하는 창이 열립니다.</p>
-                <div className="actions" style={{ marginTop: 0 }}>
-                  <button className="btn" onClick={autoRank}>
-                    순위 자동 산출
-                  </button>
-                </div>
-                <SheetFit bottomGap={120}>
-                  <Form3Sheet
-                    variant="official"
-                    subjectName={sum.subjectName}
-                    publishers={sum.publishers}
-                    rows={sum.recommendDoc}
-                    writer={sum.recommendWriter}
-                    checker={sum.recommendChecker}
-                    onTextChange={(rank, v) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-                    onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
-                    onOpinionClick={(rank) => setModalRank(rank)}
-                  />
-                </SheetFit>
-                <div className="row">
-                  <label className="field">
-                    작성자 직 (대표교사)
-                    <input type="text" value={sum.recommendWriter.position} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, position: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    작성자 성명
-                    <input type="text" value={sum.recommendWriter.name} onChange={(e) => update({ recommendWriter: { ...sum.recommendWriter, name: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    확인자 직 (교감)
-                    <input type="text" value={sum.recommendChecker.position} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, position: e.target.value } })} />
-                  </label>
-                  <label className="field">
-                    확인자 성명
-                    <input type="text" value={sum.recommendChecker.name} onChange={(e) => update({ recommendChecker: { ...sum.recommendChecker, name: e.target.value } })} />
-                  </label>
-                </div>
-              </div>
             </>
           )}
 
-          {sum && step === 2 && (
+          {sum && step === 1 && (
             <div className="card">
               <div className="main-head">
-                <h2>인쇄·저장</h2>
+                <h2>추천 의견서</h2>
                 <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
-                  <button className="btn" onClick={() => setStep(1)}>
+                  <button className="btn" onClick={() => goStep(0)}>
                     이전
                   </button>
-                  <button className="btn primary" onClick={() => askPrint('form2')}>
-                    <PrinterIcon /> 총괄표 인쇄 · PDF
-                  </button>
-                  <button className="btn" onClick={() => askPrint('form3')}>
+                  <button className="btn primary" onClick={() => askPrint('form3')}>
                     <PrinterIcon /> 추천 의견서 인쇄 · PDF
                   </button>
                   <button className="btn soft" onClick={saveHwpx}>
@@ -714,36 +730,23 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   </button>
                 </div>
               </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. 인쇄 단추는 <b>서식마다 따로</b>입니다 — [총괄표 인쇄]는 평가 총괄표만, [추천 의견서 인쇄]는 의견서만 나옵니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
-              <div className="sheet-wrap">
-                <SheetFit fitHeight={false} minScale={0.5}>
-                <Form2Sheet
-                  subjectName={sum.subjectName}
-                  publishers={sum.publishers}
-                  members={memberCols}
-                  matrix={sum.matrix}
-                  headerMode={master.settings.memberHeaderMode}
-                  decimals={master.settings.averageDecimals}
-                  writer={sum.writer}
-                  checker={sum.checker}
-                  sortByAverage={sortByAvg}
-                  onCellChange={changeCell}
-                />
-                </SheetFit>
-                <SheetFit fitHeight={false} minScale={0.5}>
+              <p className="muted small">
+                1~3순위 출판사는 <b>평가 총괄표의 평균 순위</b>로 정해집니다. 순위를 바꾸려면 [이전]에서 총괄표 점수를 고치세요. 의견 칸을 클릭하면 위원 의견을
+                종합하는 창이 열립니다. [한글(hwpx) 저장]은 총괄표와 의견서를 한 파일로 받습니다. 작성자·확인자 칸은 인쇄한 뒤 손으로 적어 주세요.
+              </p>
+              <p className="swipe-hint">서식이 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
+              <SheetFit bottomGap={120}>
                 <Form3Sheet
                   variant="official"
                   subjectName={sum.subjectName}
                   publishers={sum.publishers}
                   rows={sum.recommendDoc}
-                  writer={sum.recommendWriter}
-                  checker={sum.recommendChecker}
                   onTextChange={(rank, v) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-                  onPubChange={(rank, pid) => update({ recommendDoc: sum.recommendDoc.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
+                  onPubChange={pickTie}
+                  pickable={pickable}
                   onOpinionClick={(rank) => setModalRank(rank)}
                 />
-                </SheetFit>
-              </div>
+              </SheetFit>
             </div>
           )}
         </div>
@@ -756,7 +759,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
           tone={notice.tone}
           confirmLabel={notice.confirmLabel}
           onConfirm={notice.onConfirm}
-          cancelLabel={notice.tone === 'info' ? '돌아가서 검토' : '닫기'}
+          cancelLabel={notice.closeLabel || (notice.tone === 'info' ? '돌아가서 검토' : '닫기')}
           onClose={() => setNotice(null)}
         >
           <ul className="notice-list">

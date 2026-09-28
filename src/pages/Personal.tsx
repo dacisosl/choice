@@ -9,21 +9,19 @@ import { printSheetsInTurn } from '../lib/print'
 import { hwpxWarning, savePersonalHwpx } from '../lib/hwpxDoc'
 import { SubjectSearch } from '../components/SubjectSearch'
 import { Form1Sheet } from '../components/Form1Sheet'
-import { Form3Sheet } from '../components/Form3Sheet'
 import { OpinionModal } from '../components/OpinionModal'
 import { HeaderSlot } from '../components/HeaderSlot'
 import { SheetFit } from '../components/SheetFit'
 import { HwpIcon, PrinterIcon } from '../components/Icons'
 import { NoticeModal } from '../components/NoticeModal'
 
-const STEPS = ['선정 평가표', '추천 의견서', '인쇄·저장']
 const NAME_KEY = 'choice.teacherName'
 const SCHOOL_KEY = 'choice.schoolLevel'
 const pubsKey = (subjectId: string) => `choice.pubs.${subjectId}`
 
 type Msg = { type: 'ok' | 'warn' | 'error' | 'info'; text: string } | null
 /** 열려 있는 의견 작성 창 */
-type OpenModal = { kind: 'summary' } | { kind: 'recommend'; rank: number } | null
+type OpenModal = { kind: 'summary' } | null
 /** 안내 창: 점수 수정 제한 / 인쇄 전 확인 / 교과서 자료 출처 */
 type Notice = {
   title: string
@@ -54,7 +52,6 @@ const CATALOG_NOTICE = {
 
 export function Personal({ go }: { go: (h: string) => void }) {
   const { master, evaluations, saveEvaluation, deleteEvaluation } = useAppData()
-  const [step, setStep] = useState(0)
   const [ev, setEv] = useState<Evaluation | null>(null)
   const [msg, setMsg] = useState<Msg>(null)
   const [modal, setModal] = useState<OpenModal>(null)
@@ -193,12 +190,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
     saveTimer.current = window.setTimeout(() => saveEvaluation(next).catch(() => undefined), 1000)
   }, [subject, teacherName, ranks, namedPubs, criteria, master.settings, saveEvaluation])
 
-  // 좁은 화면: 입력이 끝난 단계(2·3단계)에서는 입력 칸을 접어 문서가 바로 보이게 한다
-  useEffect(() => {
-    if (!window.matchMedia('(max-width: 760px)').matches) return
-    setSideOpen(step === 0)
-  }, [step])
-
   const myDocs = useMemo(() => [...evaluations].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [evaluations])
 
   const setPubName = (id: string, name: string) => setPubs((list) => list.map((p) => (p.id === id ? { ...p, name } : p)))
@@ -222,7 +213,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
     setPubs(e.publishers)
     setRanks(e.ranks)
     setTeacherName(e.teacherName)
-    setStep(0)
     setMsg(null)
   }
 
@@ -251,12 +241,10 @@ export function Personal({ go }: { go: (h: string) => void }) {
     if (ev?.id === id) {
       latest.current = null
       setEv(null)
-      setStep(0)
     }
   }
 
   const pubName = (id: string | null) => ev?.publishers.find((p) => p.id === id)?.name || ''
-  const ready = !!ev
 
   /** 점수 수정: 배점을 넘거나 순위가 뒤집히면 넣지 않고 이유를 알려 준다 */
   const changeScore = (pubId: string, critId: string, v: number) => {
@@ -278,7 +266,7 @@ export function Personal({ go }: { go: (h: string) => void }) {
 
   /**
    * 인쇄 전에 책임·검토를 한 번 짚어 준다.
-   * 평가표와 추천 의견서는 따로 저장한다 — 총괄 선생님이 위원들의 평가표만 모아 올리기 쉽도록.
+   * 위원은 선정 평가표 한 장만 낸다 — 추천 의견서는 총괄 선생님이 총괄표 순위로 쓴다.
    */
   const askPrint = () => {
     if (!ev) return
@@ -288,21 +276,18 @@ export function Personal({ go }: { go: (h: string) => void }) {
       lines: [
         '이 서류의 최종 책임은 작성자 본인에게 있습니다.',
         '자동으로 만든 초안입니다. 점수와 문장이 실제 검토 결과와 맞는지 반드시 확인하고 고친 뒤 제출해 주세요.',
-        '이름 · 과목 · 출판사 · 순위가 맞는지 다시 한 번 살펴 주세요.',
-        '인쇄 창이 두 번 열립니다. 먼저 선정 평가표(가로 1쪽), 이어서 추천 의견서(세로 1쪽)를 각각 저장해 주세요.',
+        '이름 · 과목 · 출판사 · 점수가 맞는지 다시 한 번 살펴 주세요.',
+        '선정 평가표(가로 1쪽)가 인쇄됩니다. 인쇄 창에서 \'PDF로 저장\'을 고르면 총괄 선생님께 보낼 파일이 됩니다.',
       ],
       confirmLabel: '확인했습니다, 인쇄',
       onConfirm: () => {
         setNotice(null)
-        void printSheetsInTurn([
-          { selector: '.form-sheet.form1', title: `선정 평가표_${ev.subjectName}_${ev.teacherName}` },
-          { selector: '.form-sheet.form3', title: `추천 의견서_${ev.subjectName}_${ev.teacherName}` },
-        ])
+        void printSheetsInTurn([{ selector: '.form-sheet.form1', title: `선정 평가표_${ev.subjectName}_${ev.teacherName}` }])
       },
     })
   }
 
-  /** 교육청 원본 한글 서식(서식1 + 서식3)에 값을 채워 .hwpx 로 내려받는다 */
+  /** 교육청 원본 한글 서식(서식1)에 값을 채워 .hwpx 로 내려받는다 */
   const saveHwpx = async () => {
     if (!ev) return
     const warn = hwpxWarning(ev.publishers.length)
@@ -312,12 +297,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
     } catch (e) {
       setMsg({ type: 'error', text: `한글 파일을 만들지 못했습니다. ${(e as Error).message}` })
     }
-  }
-
-  const goNext = () => {
-    if (!ready) return setMsg({ type: 'warn', text: '이름·과목·출판사(2곳 이상)·1순위를 채우면 평가표가 만들어집니다.' })
-    setMsg(null)
-    setStep(1)
   }
 
   // ───────────── 의견 작성 창 ─────────────
@@ -345,50 +324,16 @@ export function Personal({ go }: { go: (h: string) => void }) {
         />
       )
     }
-    const item = ev.recommend.find((r) => r.rank === modal.rank)
-    if (!item) return null
-    return (
-      <OpinionModal
-        title={`${item.rank}순위 추천의견 — ${pubName(item.pubId) || '출판사 미선택'}`}
-        scope="recommend"
-        kind="recommend"
-        subjectName={ev.subjectName}
-        subjectGroup={subjectGroup}
-        publisherName={pubName(item.pubId)}
-        rank={item.rank}
-        options={master.opinionOptions}
-        settings={master.settings}
-        initialKeys={item.keys}
-        initialText={item.text}
-        initialStrength={item.strength}
-        avoid={ev.recommend.filter((r) => r.rank !== item.rank && r.text).map((r) => r.text)}
-        notice={item.pubId ? undefined : '이 순위의 출판사를 먼저 표에서 고르면 문장을 생성할 수 있습니다.'}
-        onCancel={() => setModal(null)}
-        onApply={({ text, keys, strength }) => {
-          update((prev) => ({
-            recommend: prev.recommend.map((r) => (r.rank === item.rank ? { ...r, text, keys, strength: strength || r.strength } : r)),
-          }))
-          setModal(null)
-        }}
-      />
-    )
+    return null
   }
 
   return (
     <div>
       <HeaderSlot>
         <div className="steps">
-          {STEPS.map((s, i) => (
-            <span
-              key={s}
-              className={`step ${i === step ? 'active' : i < step ? 'done' : ''}`}
-              onClick={() => ready && setStep(i)}
-              style={{ cursor: ready ? 'pointer' : 'default' }}
-              title={ev ? `저장됨 ${fmtDate(ev.updatedAt)}` : undefined}
-            >
-              {i + 1}. {s}
-            </span>
-          ))}
+          <span className="step active" title={ev ? `저장됨 ${fmtDate(ev.updatedAt)}` : undefined}>
+            선정 평가표 작성
+          </span>
         </div>
       </HeaderSlot>
       {msg && <div className={`alert ${msg.type}`}>{msg.text}</div>}
@@ -517,18 +462,27 @@ export function Personal({ go }: { go: (h: string) => void }) {
             </div>
           )}
 
-          {ev && step === 0 && (
+          {ev && (
             <div className="card">
               <div className="main-head">
                 <h2>선정 평가표</h2>
                 <span className="ai-note">{DRAFT_NOTE}</span>
                 <div className="main-head-actions">
-                  <button className="btn primary" onClick={goNext}>
-                    다음: 추천 의견서
+                  <button className="btn primary" onClick={askPrint}>
+                    <PrinterIcon /> 인쇄 · PDF 저장
+                  </button>
+                  <button className="btn soft" onClick={saveHwpx}>
+                    <HwpIcon /> 한글(hwpx) 저장
+                  </button>
+                  <button className="btn" onClick={exportJson}>
+                    JSON 내보내기
                   </button>
                 </div>
               </div>
-              <p className="muted small">점수 칸을 클릭해 고칠 수 있습니다. 맨 아래 종합의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
+              <p className="muted small">
+                점수 칸과 맨 아래 종합의견 칸을 눌러 고친 뒤 <b>[인쇄 · PDF 저장]</b>으로 가로 1쪽 PDF를 만들어 총괄 선생님께 보내세요. 추천 의견서는 총괄
+                선생님이 총괄표 순위로 작성합니다.
+              </p>
               <p className="swipe-hint">표가 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
               <SheetFit>
                 <Form1Sheet
@@ -543,92 +497,6 @@ export function Personal({ go }: { go: (h: string) => void }) {
                   onOpinionClick={() => setModal({ kind: 'summary' })}
                 />
               </SheetFit>
-            </div>
-          )}
-
-          {ev && step === 1 && (
-            <div className="card">
-              <div className="main-head">
-                <h2>추천 의견서</h2>
-                <span className="ai-note">{DRAFT_NOTE}</span>
-                <div className="main-head-actions">
-                  <button className="btn" onClick={() => setStep(0)}>
-                    이전
-                  </button>
-                  <button className="btn primary" onClick={() => setStep(2)}>
-                    다음: 인쇄·저장
-                  </button>
-                </div>
-              </div>
-              <p className="muted small">순위별 출판사는 자동으로 채워졌습니다. 의견 칸을 클릭하면 의견 작성 창이 열립니다.</p>
-              <p className="swipe-hint">서식이 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
-              <SheetFit>
-                <Form3Sheet
-                  variant="personal"
-                  subjectName={ev.subjectName}
-                  teacherName={ev.teacherName}
-                  publishers={ev.publishers}
-                  rows={ev.recommend}
-                  writer={{ position: '교사', name: ev.teacherName }}
-                  checker={{ position: '', name: '' }}
-                  onTextChange={(rank, v) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-                  onPubChange={(rank, pid) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
-                  onOpinionClick={(rank) => setModal({ kind: 'recommend', rank })}
-                />
-              </SheetFit>
-            </div>
-          )}
-
-          {ev && step === 2 && (
-            <div className="card">
-              <div className="main-head">
-                <h2>인쇄·저장</h2>
-                <span className="ai-note">{DRAFT_NOTE}</span>
-                <div className="main-head-actions">
-                  <button className="btn" onClick={() => setStep(1)}>
-                    이전
-                  </button>
-                  <button className="btn primary" onClick={askPrint}>
-                    <PrinterIcon /> 인쇄 · PDF 저장
-                  </button>
-                  <button className="btn soft" onClick={saveHwpx}>
-                    <HwpIcon /> 한글(hwpx) 저장
-                  </button>
-                  <button className="btn" onClick={exportJson}>
-                    JSON 내보내기
-                  </button>
-                </div>
-              </div>
-              <p className="muted small">여기서도 점수 칸과 의견 칸을 바로 고칠 수 있습니다. [인쇄 · PDF 저장]을 누르면 인쇄 창이 두 번 열려 <b>선정 평가표(가로 1쪽)</b>와 <b>추천 의견서(세로 1쪽)</b>를 각각 저장합니다 — 인쇄 창에서 대상을 'PDF로 저장'으로 고르면 총괄 선생님께 보낼 파일이 됩니다. [한글(hwpx) 저장]은 교육청 원본 서식에 값을 채워 한글 파일 하나로 내려받습니다.</p>
-              <div className="sheet-wrap">
-                <SheetFit fitHeight={false} minScale={0.5}>
-                <Form1Sheet
-                  subjectName={ev.subjectName}
-                  teacherName={ev.teacherName}
-                  criteria={ev.criteria}
-                  publishers={ev.publishers}
-                  scores={ev.scores}
-                  opinion={ev.summaryOpinion}
-                  onScoreChange={changeScore}
-                  onOpinionChange={(v) => update({ summaryOpinion: v })}
-                  onOpinionClick={() => setModal({ kind: 'summary' })}
-                />
-                </SheetFit>
-                <SheetFit fitHeight={false} minScale={0.5}>
-                <Form3Sheet
-                  variant="personal"
-                  subjectName={ev.subjectName}
-                  teacherName={ev.teacherName}
-                  publishers={ev.publishers}
-                  rows={ev.recommend}
-                  writer={{ position: '교사', name: ev.teacherName }}
-                  checker={{ position: '', name: '' }}
-                  onTextChange={(rank, v) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, text: v } : r)) })}
-                  onPubChange={(rank, pid) => update({ recommend: ev.recommend.map((r) => (r.rank === rank ? { ...r, pubId: pid || null } : r)) })}
-                  onOpinionClick={(rank) => setModal({ kind: 'recommend', rank })}
-                />
-                </SheetFit>
-              </div>
             </div>
           )}
         </div>

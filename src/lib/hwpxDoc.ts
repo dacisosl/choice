@@ -98,9 +98,10 @@ interface Form3Data {
   subjectName: string
   publishers: DocPublisher[]
   rows: { rank: 1 | 2 | 3; pubId: string | null; text: string }[]
-  writer: Person
-  checker: Person
 }
+
+/** 서명란은 손으로 쓰도록 직·성명을 비워 둔다 */
+const BLANK: Person = { position: '', name: '' }
 
 async function form3(d: Form3Data): Promise<string> {
   let xml = await loadPart('form3.xml')
@@ -115,8 +116,8 @@ async function form3(d: Form3Data): Promise<string> {
   xml = fillTable(xml, 0, fills)
   xml = scaleTable(xml, 0, TEXT_W.portrait)
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
-  xml = replaceParagraph(xml, '교과협의회', `  교과협의회     작성자           직 ${d.writer.position || ''}        성명 ${d.writer.name || ''}          (인)`)
-  xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker))
+  xml = replaceParagraph(xml, '교과협의회', `  교과협의회     작성자           직 ${BLANK.position}        성명 ${BLANK.name}          (인)`)
+  xml = replaceParagraph(xml, '확인자', sign('확인자', BLANK))
   return xml
 }
 
@@ -127,8 +128,6 @@ interface Form2Data {
   members: Pick<SummaryMember, 'id' | 'teacherName'>[]
   matrix: Record<string, Record<string, number>>
   decimals: number
-  writer: Person
-  checker: Person
 }
 
 async function form2(d: Form2Data): Promise<string> {
@@ -160,14 +159,14 @@ async function form2(d: Form2Data): Promise<string> {
   xml = dropColumns(xml, 0, spare, members.map((_, i) => 1 + i))
   xml = scaleTable(xml, 0, TEXT_W.portrait)
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
-  xml = replaceParagraph(xml, '작성자', sign('작성자', d.writer))
-  xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker))
+  xml = replaceParagraph(xml, '작성자', sign('작성자', BLANK))
+  xml = replaceParagraph(xml, '확인자', sign('확인자', BLANK))
   return xml
 }
 
 // ───────────── 바깥에서 쓰는 것 ─────────────
 
-/** 위원 개인 서류: 서식1 + 서식3 을 한 파일로 */
+/** 위원 개인 서류: 서식1(선정 평가표) 한 장 */
 export async function savePersonalHwpx(ev: Evaluation): Promise<void> {
   const sections = [
     await form1({
@@ -178,16 +177,9 @@ export async function savePersonalHwpx(ev: Evaluation): Promise<void> {
       scores: ev.scores,
       summaryOpinion: ev.summaryOpinion,
     }),
-    await form3({
-      subjectName: ev.subjectName,
-      publishers: ev.publishers,
-      rows: ev.recommend.map((r) => ({ rank: r.rank, pubId: r.pubId, text: r.text })),
-      writer: { position: '교사', name: ev.teacherName },
-      checker: { position: '', name: '' },
-    }),
   ]
   const title = `선정 평가표_${ev.subjectName}_${ev.teacherName}`
-  download(await buildHwpx({ sections, title, preview: `${title}\n검정(인정)도서 선정 평가표 · 추천 의견서` }), `${title}.hwpx`)
+  download(await buildHwpx({ sections, title, preview: `${title}\n검정(인정)도서 선정 평가표` }), `${title}.hwpx`)
 }
 
 /** 총괄 서류: 서식2 + 서식3 을 한 파일로 */
@@ -197,11 +189,7 @@ export async function saveCompileHwpx(d: {
   members: Pick<SummaryMember, 'id' | 'teacherName'>[]
   matrix: Record<string, Record<string, number>>
   decimals: number
-  writer: Person
-  checker: Person
   recommendDoc: SummaryRecommend[]
-  recommendWriter: Person
-  recommendChecker: Person
 }): Promise<void> {
   const sections = [
     await form2(d),
@@ -209,8 +197,6 @@ export async function saveCompileHwpx(d: {
       subjectName: d.subjectName,
       publishers: d.publishers,
       rows: d.recommendDoc,
-      writer: d.recommendWriter,
-      checker: d.recommendChecker,
     }),
   ]
   const title = `평가 총괄표_${d.subjectName}`

@@ -11,20 +11,26 @@ interface Props {
   subjectName: string
   publishers: DocPublisher[]
   rows: Form3Row[]
-  writer: Person
-  checker: Person
+  /** 예전 호출부 호환용 — 서명란은 손으로 쓰도록 늘 비워 둔다 */
+  writer?: Person
+  checker?: Person
   /** personal: 위원 개인용(위원명 표기), official: 대표교사 작성 공식본 */
   variant: 'personal' | 'official'
   teacherName?: string
   readOnly?: boolean
   onTextChange?: (rank: number, v: string) => void
   onPubChange?: (rank: number, pubId: string) => void
+  /**
+   * 순위마다 고를 수 있는 출판사 id 목록. 주면 목록이 있는 순위만 고르는 칸이 되고
+   * (총괄표에서 평균이 같아 순위를 가를 수 없는 경우), 나머지는 이름만 글자로 보인다.
+   */
+  pickable?: (rank: number) => string[] | null
   /** 주면 추천의견 칸 클릭 시 의견 작성 창을 연다 */
   onOpinionClick?: (rank: number) => void
 }
 
 /** 【서식3】 추천 검정(인정)도서 및 추천 의견서 — A4 세로 */
-export function Form3Sheet({ subjectName, publishers, rows, writer, checker, variant, teacherName, readOnly, onTextChange, onPubChange, onOpinionClick }: Props) {
+export function Form3Sheet({ subjectName, publishers, rows, variant, teacherName, readOnly, onTextChange, onPubChange, pickable, onOpinionClick }: Props) {
   const pubName = (id: string | null) => publishers.find((p) => p.id === id)?.name || ''
   return (
     <div className={`form-sheet form3 ${readOnly ? 'readonly' : ''}`}>
@@ -56,16 +62,16 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
           {rows.map((r) => (
             <tr key={r.rank}>
               <td className="c">{r.rank}</td>
-              <td className="c pub-cell">
-                {readOnly || !onPubChange ? (
+              <td className={`c pub-cell ${pickable?.(r.rank) ? 'tie' : ''}`}>
+                {readOnly || !onPubChange || (pickable && !pickable(r.rank)) ? (
                   pubName(r.pubId)
                 ) : (
                   <>
                     {/* 고르는 칸은 이름이 길면 잘려 인쇄된다. 인쇄할 때는 아래 글자만 나온다 */}
                     <span className="pub-print">{pubName(r.pubId)}</span>
                     <select className="pub-pick" value={r.pubId || ''} onChange={(e) => onPubChange(r.rank, e.target.value)}>
-                      <option value="">-</option>
-                      {publishers.map((p) => (
+                      <option value="">{pickable ? '동점 — 고르기' : '-'}</option>
+                      {publishers.filter((p) => !pickable || pickable(r.rank)?.includes(p.id)).map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name}
                         </option>
@@ -93,14 +99,14 @@ export function Form3Sheet({ subjectName, publishers, rows, writer, checker, var
             교과협의회
           </span>
           <span className="k">작성자</span>
-          <span>직 <span className="fill">{writer.position}</span></span>
-          <span>성명 <span className="fill">{writer.name}</span> (인)</span>
+          <span>직 <span className="fill" /></span>
+          <span>성명 <span className="fill name" /> (인)</span>
         </div>
         <div className="line">
           <span className="k" style={{ width: 80 }} />
           <span className="k">확인자</span>
-          <span>직 <span className="fill">{checker.position}</span></span>
-          <span>성명 <span className="fill">{checker.name}</span> (인)</span>
+          <span>직 <span className="fill" /></span>
+          <span>성명 <span className="fill name" /> (인)</span>
         </div>
       </div>
       <div className="footnote">
