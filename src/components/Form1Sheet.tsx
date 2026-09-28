@@ -50,7 +50,7 @@ export function Form1Sheet({ subjectName, teacherName, criteria, publishers, sco
         <div />
         <div className="right">
           <span className="sign">
-            과&nbsp;&nbsp;목 : <span className="name">{subjectName}</span> 과
+            과&nbsp;&nbsp;목 : <span className="name">{subjectName}</span>
           </span>
           &nbsp;&nbsp;&nbsp;&nbsp;
           <span className="sign">

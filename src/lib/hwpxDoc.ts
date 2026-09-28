@@ -89,7 +89,7 @@ async function form1(d: Form1Data): Promise<string> {
   xml = layoutColumns(xml, 0, [area, rest - pubW * N, pts, ...Array.from({ length: N }, () => pubW)])
   // 비어 있을 때 쓸데없이 높던 줄은 낮춘다 (글이 길어지면 한글이 알아서 늘린다)
   xml = setRowHeights(xml, 0, { 0: 1765, 1: 3000, [sumRow]: 2600, [opinionRow]: 8500 })
-  xml = replaceParagraph(xml, '과  목', `과  목 : ${d.subjectName} 과      위  원 : ${d.teacherName}        (인)`)
+  xml = replaceParagraph(xml, '과  목', `과  목 : ${d.subjectName}        위  원 : ${d.teacherName}        (인)`)
   return xml
 }
 

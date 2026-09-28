@@ -193,7 +193,8 @@ export function textInRange(row: TextRow, lo: number, hi: number): string {
 export function parseForm1(rows: TextRow[]): ParsedForm1 | null {
   const warnings: string[] = []
   const flatAll = rows.map((r) => r.flat).join(' ')
-  const subjectName = normalize((flatAll.match(/과목\s*[:：]\s*(.+?)과(?:\s|위원|$)/) || [])[1] || '')
+  // 머리글 '과 목 : ○○ 과' 의 끝 '과'는 예전 서식에만 있다 — 있어도 없어도 과목명만 꺼낸다
+  const subjectName = normalize((flatAll.match(/과목\s*[:：]\s*(.+?)(?:과)?(?=위원\s*[:：]|\s|$)/) || [])[1] || '')
   const teacherName = normalize((flatAll.match(/위원\s*[:：]\s*(.+?)\(인\)/) || [])[1] || '')
 
   const totalRowIdx = rows.findIndex((r) => r.flat.startsWith('합계'))
