@@ -84,6 +84,7 @@ export function OpinionModal({
       length,
       avoid,
       sources: sources?.map((s) => s.text),
+      options,
     })
     setBusy(false)
     setText(next)

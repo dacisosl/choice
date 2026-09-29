@@ -19,6 +19,8 @@ export interface GenInput {
   avoid?: string[]
   /** 총괄 종합용: 위원들의 개인 의견 */
   sources?: string[]
+  /** 위원 글에서 핵심의견 구절을 알아보는 데 쓰는 항목 목록 (설정에서 더한 항목 포함) */
+  options?: { label: string; negative?: boolean }[]
 }
 
 // ───────────── 규칙 기반(오프라인) 문장 ─────────────
@@ -76,6 +78,63 @@ function phrase(label: string): string {
   return PHRASES[label] || `${label} 측면이 우수하`
 }
 
+/** 기본 목록 가운데 아쉬운 점 항목 */
+const NEGATIVE_LABELS = new Set(['분량 과다', '활동 난이도 높음', '삽화 부족', '가격 높음'])
+
+/**
+ * 글 속에서 구절을 찾는 열쇠: 띄어쓰기를 빼고 끝 한 글자를 뗀다.
+ * 끝 글자는 문장에 따라 '하고/함/한', '있고/있음', '되어/됨' 처럼 바뀌는 자리라서다.
+ */
+const phraseKey = (stem: string) => stem.replace(/\s/g, '').slice(0, -1)
+
+/** 위원 개인 글에만 어울리는 상투 문장 (공식 의견서에는 넣지 않는다) */
+const BOILERPLATE = [/종합적으로\s*\d\s*순위로\s*평가/, /검토\s*결과가\s*양호/, /이상의\s*사유로.*추천/, /개별\s*평가\s*결과를\s*종합하여/]
+
+/**
+ * 위원들의 글을 구절 단위로 나눈다.
+ * 핵심의견 구절이 들어 있는 문장은 구절만 꺼내고(여러 위원이 쓴 것부터), 구절이 없는 문장은
+ * 위원이 손으로 쓴 글로 보고 그대로 남긴다. 상투 문장은 버린다.
+ */
+function digestSources(sources: string[], options?: GenInput['options']) {
+  const labels = new Map<string, boolean>()
+  for (const l of Object.keys(PHRASES)) labels.set(l, NEGATIVE_LABELS.has(l))
+  for (const o of options || []) labels.set(o.label, !!o.negative)
+  const keys = [...labels].map(([label, negative]) => ({ label, negative, key: phraseKey(phrase(label)) })).filter((x) => x.key.length >= 4)
+
+  const count = new Map<string, number>()
+  const firstSeen = new Map<string, number>()
+  const free: string[] = []
+  let order = 0
+  for (const text of sources) {
+    const seenHere = new Set<string>()
+    for (const raw of text.split(/(?<=[.。!?])\s+/)) {
+      const sentence = raw.trim()
+      if (!sentence || BOILERPLATE.some((re) => re.test(sentence))) continue
+      const flat = sentence.replace(/\s/g, '')
+      const found = keys.filter((k) => flat.includes(k.key))
+      if (!found.length) {
+        const letters = (sentence.match(/[가-힣]/g) || []).length
+        if (letters >= 6 && !free.some((f) => f.replace(/\s/g, '') === flat)) free.push(sentence)
+        continue
+      }
+      for (const k of found) {
+        if (!firstSeen.has(k.label)) firstSeen.set(k.label, order++)
+        if (!seenHere.has(k.label)) count.set(k.label, (count.get(k.label) || 0) + 1)
+        seenHere.add(k.label)
+      }
+    }
+  }
+  const ranked = [...count.keys()].sort((a, b) => count.get(b)! - count.get(a)! || firstSeen.get(a)! - firstSeen.get(b)!)
+  return {
+    positives: ranked.filter((l) => !labels.get(l)),
+    negatives: ranked.filter((l) => labels.get(l)),
+    free,
+  }
+}
+
+/** 순서를 지키며 겹치는 것을 뺀다 */
+const uniq = (list: string[]) => list.filter((x, i) => list.indexOf(x) === i)
+
 function end(tone: Tone, kind: 'state' | 'judge' = 'state'): string {
   if (tone === 'formal') return kind === 'state' ? '음.' : '됨.'
   return kind === 'state' ? '습니다.' : '됩니다.'
@@ -121,23 +180,23 @@ export function generateOpinion(input: GenInput): string {
   const sentences: string[] = []
 
   if (input.kind === 'compile') {
+    // 위원 글을 문장째 잇지 않고 구절로 모아 한 번씩만 쓴다 (출판사·과목도 한 번만)
     const rankTxt = input.rank ? `${input.rank}순위` : ''
     sentences.push(
       t === 'formal'
         ? `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}${josa(p, '을')} ${rankTxt}로 추천함.`
         : `교과협의회 위원들의 개별 평가 결과를 종합하여 ${p}${josa(p, '을')} ${rankTxt}로 추천합니다.`,
     )
-    const srcs = (input.sources || []).filter(Boolean)
-    if (srcs.length) {
-      const merged = srcs
-        .join(' ')
-        .split(/(?<=[.。])\s+/)
-        .map((x) => x.trim())
-        .filter(Boolean)
-      const uniq = Array.from(new Set(merged)).slice(0, input.length === 'long' ? 5 : 3)
-      sentences.push(...uniq)
+    const src = digestSources((input.sources || []).filter(Boolean), input.options)
+    const goods = uniq([...pos, ...src.positives]).slice(0, input.length === 'long' ? 6 : 3)
+    const bads = uniq([...neg, ...src.negatives]).slice(0, 2)
+    if (goods.length) sentences.push(conj(`${p}의 ${s} 교과서는 ${goods.slice(0, 3).map(phrase).join('고, ')}`, t))
+    if (goods.length > 3) sentences.push(conj(`또한 ${goods.slice(3).map(phrase).join('고, ')}`, t))
+    sentences.push(...src.free.slice(0, input.length === 'long' ? 2 : 1))
+    if (bads.length) {
+      const body = adnominal(bads.map(phrase).join('고, '))
+      sentences.push(t === 'formal' ? `다만 ${body} 점은 보완이 필요함.` : `다만 ${body} 점은 보완이 필요합니다.`)
     }
-    if (pos.length) sentences.push(conj(`위원 공통 의견으로 ${pos.slice(0, 3).map(phrase).join('고, ')}`, t))
     return sentences.join(' ')
   }
 
