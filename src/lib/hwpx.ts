@@ -7,7 +7,22 @@
  * 서식·글꼴·도장란이 원본 그대로라 한글에서 열어 바로 제출할 수 있다.
  */
 
-const esc = (s: string) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+/**
+ * 파일에 넣을 글자를 XML 규칙에 맞게 정리한다.
+ * 위원 PDF 에서 읽어 온 글자나 붙여 넣은 글에는 제어 문자·짝 없는 서러게이트 같은
+ * XML 1.0 금지 글자가 섞여 오기도 하는데, 한 글자만 있어도 한글이 파일 전체를 '읽을 수 없는 파일'로 거부한다.
+ */
+export function cleanText(s: string): string {
+  return String(s ?? '')
+    .replace(/\r\n|\r|\u2028|\u2029|\v|\f/g, '\n') // 줄바꿈 종류를 하나로
+    .replace(/\t/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // 제로폭 글자
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g, '') // 짝 없는 앞 서러게이트
+    .replace(/(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '$1') // 짝 없는 뒤 서러게이트
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\uFFFE\uFFFF]/g, '') // XML 금지 글자
+}
+
+const esc = (s: string) => cleanText(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 // ───────────── 조각 받아 오기 ─────────────
 const cache = new Map<string, Promise<string>>()
@@ -51,7 +66,7 @@ function setCellText(tc: string, text: string): string {
   const pOpen = /<hp:p\b[^>]*>/.exec(inner)?.[0] || '<hp:p id="2147483648" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0">'
   const charPr = /<hp:run charPrIDRef="(\d+)"/.exec(inner)?.[1] || '0'
   // 줄 나눔 캐시(linesegarray)는 넣지 않는다 — 남아 있으면 한글이 '한 줄로 쓰기'처럼 그린다
-  const body = String(text ?? '')
+  const body = cleanText(text)
     .split('\n')
     .map((line) => `${pOpen}<hp:run charPrIDRef="${charPr}">${line ? `<hp:t>${esc(line)}</hp:t>` : ''}</hp:run></hp:p>`)
     .join('')
@@ -379,6 +394,16 @@ export interface HwpxDoc {
 }
 
 /** 구역 XML 들을 한글 문서 하나로 묶는다 */
+/** XML 이 파싱되지 않으면 어느 조각인지 밝히며 멈춘다 */
+function assertWellFormed(label: string, xml: string): void {
+  if (typeof DOMParser === 'undefined') return
+  const doc = new DOMParser().parseFromString(xml, 'application/xml')
+  const err = doc.getElementsByTagName('parsererror')[0]
+  if (!err) return
+  const why = (err.textContent || '').split('\n')[0].slice(0, 120)
+  throw new Error(`${label} 내용을 한글 형식으로 만들지 못했습니다 (${why}). 해당 칸의 글에 특수 문자가 있는지 확인해 주세요.`)
+}
+
 export async function buildHwpx({ sections, title, preview }: HwpxDoc): Promise<Blob> {
   const enc = new TextEncoder()
   const [header, version, settings, container, rdf] = await Promise.all([
@@ -391,6 +416,12 @@ export async function buildHwpx({ sections, title, preview }: HwpxDoc): Promise<
   // 머리말의 구역 수는 원본(3구역) 그대로라 우리 문서와 맞춰 줘야 한다.
   // 이 숫자가 어긋나면 한글이 '손상된 파일'이라고 한다.
   const head = header.replace(/(<hh:head\b[^>]*?)secCnt="\d+"/, `$1secCnt="${sections.length}"`)
+  const hpf = HPF(sections.length, title)
+
+  // 내려받기 전에 우리가 만든 XML 이 온전한지 스스로 검사한다 — 깨진 파일을 주느니 이유를 알리는 편이 낫다
+  assertWellFormed('머리말', head)
+  sections.forEach((xml, i) => assertWellFormed(`서식 ${i + 1}`, xml))
+  assertWellFormed('문서 정보', hpf)
 
   // 파일 순서는 원본과 같게 둔다 (mimetype 이 반드시 맨 앞)
   const entries: Entry[] = [
@@ -398,11 +429,11 @@ export async function buildHwpx({ sections, title, preview }: HwpxDoc): Promise<
     { name: 'version.xml', data: enc.encode(version) },
     { name: 'Contents/header.xml', data: enc.encode(head) },
     ...sections.map((xml, i) => ({ name: `Contents/section${i}.xml`, data: enc.encode(xml) })),
-    { name: 'Preview/PrvText.txt', data: enc.encode(preview || title) },
+    { name: 'Preview/PrvText.txt', data: enc.encode(cleanText(preview || title)) },
     { name: 'settings.xml', data: enc.encode(settings) },
     { name: 'Preview/PrvImage.png', data: base64ToBytes(PRV_IMAGE) },
     { name: 'META-INF/container.rdf', data: enc.encode(rdf) },
-    { name: 'Contents/content.hpf', data: enc.encode(HPF(sections.length, title)) },
+    { name: 'Contents/content.hpf', data: enc.encode(hpf) },
     { name: 'META-INF/container.xml', data: enc.encode(container) },
     { name: 'META-INF/manifest.xml', data: enc.encode(MANIFEST) },
   ]
