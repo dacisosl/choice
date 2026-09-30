@@ -415,6 +415,20 @@ function assertWellFormed(label: string, xml: string): void {
   throw new Error(`${label} 내용을 한글 형식으로 만들지 못했습니다 (${why}). 해당 칸의 글에 특수 문자가 있는지 확인해 주세요.`)
 }
 
+/**
+ * 구역(서식) 하나에는 쪽 모양(secPr)과 단 모양(colPr)이 정확히 한 벌이어야 한다.
+ * 둘 이상이면 한글이 구역 수와 어긋난다고 보고 "파일을 읽거나 저장하는데 오류가 있습니다" 로 파일을 거부한다.
+ * (서식2 조각에 쪽 모양이 두 벌 들어가 총괄 파일이 열리지 않던 원인)
+ */
+function assertOneSectionHead(label: string, xml: string): void {
+  const count = (re: RegExp) => (xml.match(re) || []).length
+  const sec = count(/<hp:secPr\b/g)
+  const col = count(/<hp:colPr\b/g)
+  if (sec !== 1 || col !== 1) {
+    throw new Error(`${label}에 쪽 설정이 ${sec}개, 단 설정이 ${col}개 있습니다 (각 1개여야 합니다). 서식 파일이 잘못되었습니다.`)
+  }
+}
+
 export async function buildHwpx({ sections, title, preview }: HwpxDoc): Promise<Blob> {
   const enc = new TextEncoder()
   const [header, version, settings, container, rdf] = await Promise.all([
@@ -431,7 +445,10 @@ export async function buildHwpx({ sections, title, preview }: HwpxDoc): Promise<
 
   // 내려받기 전에 우리가 만든 XML 이 온전한지 스스로 검사한다 — 깨진 파일을 주느니 이유를 알리는 편이 낫다
   assertWellFormed('머리말', head)
-  sections.forEach((xml, i) => assertWellFormed(`서식 ${i + 1}`, xml))
+  sections.forEach((xml, i) => {
+    assertWellFormed(`서식 ${i + 1}`, xml)
+    assertOneSectionHead(`서식 ${i + 1}`, xml)
+  })
   assertWellFormed('문서 정보', hpf)
 
   // 파일 순서는 원본과 같게 둔다 (mimetype 이 반드시 맨 앞)

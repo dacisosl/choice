@@ -115,9 +115,14 @@ if (!secRun) throw new Error('secPr 을 찾지 못했습니다')
 
 function cut(from, to) {
   const body = paras.slice(from, to).map(([a, b]) => sec2.slice(a, b))
-  // 첫 문단 여는 태그 바로 뒤에 쪽 모양을 넣는다
-  body[0] = body[0].replace(/^(<hp:p\b[^>]*>)/, `$1${secRun[0]}`)
-  return `${head}${body.join('')}</hs:sec>`
+  // 첫 문단 여는 태그 바로 뒤에 쪽 모양을 넣는다.
+  // 단, 구역의 첫 문단부터 잘라 낸 경우(서식2)는 이미 쪽 모양을 갖고 있으므로 넣지 않는다 —
+  // 한 구역에 쪽 모양(secPr)이 둘이면 한글이 "파일을 읽거나 저장하는데 오류가 있습니다" 로 파일을 거부한다.
+  if (!body[0].includes('<hp:secPr')) body[0] = body[0].replace(/^(<hp:p\b[^>]*>)/, `$1${secRun[0]}`)
+  const xml = `${head}${body.join('')}</hs:sec>`
+  const n = (xml.match(/<hp:secPr\b/g) || []).length
+  if (n !== 1) throw new Error(`잘라 낸 구역에 쪽 모양이 ${n}개 있습니다 (1개여야 합니다)`)
+  return xml
 }
 writeFileSync(`${OUT}/form2.xml`, tidy(cut(i2, i3)))
 writeFileSync(`${OUT}/form3.xml`, tidy(cut(i3, i4)))
