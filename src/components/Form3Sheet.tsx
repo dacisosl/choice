@@ -1,5 +1,6 @@
 import type { DocPublisher, Person } from '../types'
 import { TextCell } from './EditableCell'
+import { SignLines, type SignRole } from './SignLines'
 
 export interface Form3Row {
   rank: 1 | 2 | 3
@@ -11,9 +12,11 @@ interface Props {
   subjectName: string
   publishers: DocPublisher[]
   rows: Form3Row[]
-  /** 예전 호출부 호환용 — 서명란은 손으로 쓰도록 늘 비워 둔다 */
+  /** 서명란 직·성명. 비우면 인쇄에서 빈칸(손으로 쓰는 자리) */
   writer?: Person
   checker?: Person
+  /** 주면 서명란을 화면에서 바로 고칠 수 있다 */
+  onSignChange?: (role: SignRole, field: keyof Person, v: string) => void
   /** personal: 위원 개인용(위원명 표기), official: 대표교사 작성 공식본 */
   variant: 'personal' | 'official'
   teacherName?: string
@@ -30,7 +33,7 @@ interface Props {
 }
 
 /** 【서식3】 추천 검정(인정)도서 및 추천 의견서 — A4 세로 */
-export function Form3Sheet({ subjectName, publishers, rows, variant, teacherName, readOnly, onTextChange, onPubChange, pickable, onOpinionClick }: Props) {
+export function Form3Sheet({ subjectName, publishers, rows, variant, teacherName, writer, checker, onSignChange, readOnly, onTextChange, onPubChange, pickable, onOpinionClick }: Props) {
   const pubName = (id: string | null) => publishers.find((p) => p.id === id)?.name || ''
   return (
     <div className={`form-sheet form3 ${readOnly ? 'readonly' : ''}`}>
@@ -93,22 +96,7 @@ export function Form3Sheet({ subjectName, publishers, rows, variant, teacherName
           ))}
         </tbody>
       </table>
-      <div className="sign-block">
-        <div className="line">
-          <span className="k" style={{ width: 80 }}>
-            교과협의회
-          </span>
-          <span className="k">작성자</span>
-          <span>직 <span className="fill" /></span>
-          <span>성명 <span className="fill name" /> (인)</span>
-        </div>
-        <div className="line">
-          <span className="k" style={{ width: 80 }} />
-          <span className="k">확인자</span>
-          <span>직 <span className="fill" /></span>
-          <span>성명 <span className="fill name" /> (인)</span>
-        </div>
-      </div>
+      <SignLines lead="교과협의회" writer={writer} checker={checker} readOnly={readOnly} onChange={onSignChange} />
       <div className="footnote">
         {variant === 'official'
           ? '※ 작성자는 교과협의회 대표교사, 확인자는 교감으로 함'

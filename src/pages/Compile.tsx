@@ -147,6 +147,10 @@ export function Compile({ go }: { go: (h: string) => void }) {
         matrix: sum.matrix,
         decimals: master.settings.averageDecimals,
         recommendDoc: sum.recommendDoc,
+        writer: sum.writer,
+        checker: sum.checker,
+        recommendWriter: sum.recommendWriter,
+        recommendChecker: sum.recommendChecker,
       })
     } catch (e) {
       setMsg({ type: 'error', text: `한글 파일을 만들지 못했습니다. ${(e as Error).message}` })
@@ -235,11 +239,12 @@ export function Compile({ go }: { go: (h: string) => void }) {
       publishers,
       members: list,
       matrix,
-      writer: blank,
-      checker: blank,
+      // 화면에서 적은 작성자·확인자는 위원을 더 올려도 그대로 둔다
+      writer: base?.writer || blank,
+      checker: base?.checker || blank,
       recommendDoc: base?.recommendDoc || ([1, 2, 3] as const).map((r) => ({ rank: r, pubId: null, text: '' })),
-      recommendWriter: blank,
-      recommendChecker: blank,
+      recommendWriter: base?.recommendWriter || blank,
+      recommendChecker: base?.recommendChecker || blank,
       updatedAt: new Date().toISOString(),
     }
     commit(next)
@@ -636,7 +641,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
                 </div>
                 <p className="muted small">
                   위원 평가표를 더 올리거나 빼면 표가 바로 다시 만들어집니다. 칸을 클릭하면 점수를 고칠 수 있고, 고친 칸은 위원을 더 올려도 그대로 남습니다. 아래
-                  작성자·확인자 칸은 인쇄한 뒤 손으로 적어 주세요.
+                  작성자·확인자의 직·성명은 서식에서 바로 적을 수 있고, 비워 두면 인쇄한 뒤 손으로 적습니다.
                 </p>
                 {sum.members.length < 3 && (
                   <p className="alert warn small">위원이 {sum.members.length}명입니다. 계획서는 3인 이상을 권장합니다(소규모 학교는 2인 가능).</p>
@@ -681,6 +686,9 @@ export function Compile({ go }: { go: (h: string) => void }) {
                     decimals={master.settings.averageDecimals}
                     sortByAverage={sortByAvg}
                     onCellChange={changeCell}
+                    writer={sum.writer}
+                    checker={sum.checker}
+                    onSignChange={(role, field, v) => update((prev) => ({ [role]: { ...prev[role], [field]: v } }))}
                   />
                 </SheetFit>
               </div>
@@ -732,7 +740,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
               </div>
               <p className="muted small">
                 1~3순위 출판사는 <b>평가 총괄표의 평균 순위</b>로 정해집니다. 순위를 바꾸려면 [이전]에서 총괄표 점수를 고치세요. 의견 칸을 클릭하면 위원 의견을
-                종합하는 창이 열립니다. [한글(hwpx) 저장]은 총괄표와 의견서를 한 파일로 받습니다. 작성자·확인자 칸은 인쇄한 뒤 손으로 적어 주세요.
+                종합하는 창이 열립니다. [한글(hwpx) 저장]은 총괄표와 의견서를 한 파일로 받습니다. 작성자·확인자의 직·성명은 서식에서 바로 적을 수 있고, 비워 두면 인쇄한 뒤 손으로 적습니다.
               </p>
               <p className="swipe-hint">서식이 화면보다 넓으면 옆으로 밀어서 볼 수 있어요.</p>
               <SheetFit bottomGap={120}>
@@ -745,6 +753,12 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   onPubChange={pickTie}
                   pickable={pickable}
                   onOpinionClick={(rank) => setModalRank(rank)}
+                  writer={sum.recommendWriter}
+                  checker={sum.recommendChecker}
+                  onSignChange={(role, field, v) => {
+                    const key = role === 'writer' ? 'recommendWriter' : 'recommendChecker'
+                    update((prev) => ({ [key]: { ...prev[key], [field]: v } }))
+                  }}
                 />
               </SheetFit>
             </div>

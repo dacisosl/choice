@@ -98,9 +98,11 @@ interface Form3Data {
   subjectName: string
   publishers: DocPublisher[]
   rows: { rank: 1 | 2 | 3; pubId: string | null; text: string }[]
+  /** 서명란 직·성명. 비우면 손으로 쓰도록 빈칸으로 남는다 */
+  writer?: Person
+  checker?: Person
 }
 
-/** 서명란은 손으로 쓰도록 직·성명을 비워 둔다 */
 const BLANK: Person = { position: '', name: '' }
 
 async function form3(d: Form3Data): Promise<string> {
@@ -116,8 +118,9 @@ async function form3(d: Form3Data): Promise<string> {
   xml = fillTable(xml, 0, fills)
   xml = scaleTable(xml, 0, TEXT_W.portrait)
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
-  xml = replaceParagraph(xml, '교과협의회', `  교과협의회     작성자           직 ${BLANK.position}        성명 ${BLANK.name}          (인)`)
-  xml = replaceParagraph(xml, '확인자', sign('확인자', BLANK))
+  const w = d.writer || BLANK
+  xml = replaceParagraph(xml, '교과협의회', `  교과협의회     작성자           직 ${w.position || ''}        성명 ${w.name || ''}          (인)`)
+  xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker || BLANK))
   return xml
 }
 
@@ -128,6 +131,9 @@ interface Form2Data {
   members: Pick<SummaryMember, 'id' | 'teacherName'>[]
   matrix: Record<string, Record<string, number>>
   decimals: number
+  /** 서명란 직·성명. 비우면 손으로 쓰도록 빈칸으로 남는다 */
+  writer?: Person
+  checker?: Person
 }
 
 async function form2(d: Form2Data): Promise<string> {
@@ -161,8 +167,8 @@ async function form2(d: Form2Data): Promise<string> {
   // 줄을 줄였으니 표 전체 높이도 남은 줄의 합으로 맞춘다 — 원본은 언제나 둘이 같고, 어긋나면 한글이 파일을 못 연다
   xml = setRowHeights(xml, 0, {})
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
-  xml = replaceParagraph(xml, '작성자', sign('작성자', BLANK))
-  xml = replaceParagraph(xml, '확인자', sign('확인자', BLANK))
+  xml = replaceParagraph(xml, '작성자', sign('작성자', d.writer || BLANK))
+  xml = replaceParagraph(xml, '확인자', sign('확인자', d.checker || BLANK))
   return xml
 }
 
@@ -192,6 +198,10 @@ export async function saveCompileHwpx(d: {
   matrix: Record<string, Record<string, number>>
   decimals: number
   recommendDoc: SummaryRecommend[]
+  writer?: Person
+  checker?: Person
+  recommendWriter?: Person
+  recommendChecker?: Person
 }): Promise<void> {
   const sections = [
     await form2(d),
@@ -199,6 +209,8 @@ export async function saveCompileHwpx(d: {
       subjectName: d.subjectName,
       publishers: d.publishers,
       rows: d.recommendDoc,
+      writer: d.recommendWriter,
+      checker: d.recommendChecker,
     }),
   ]
   const title = `평가 총괄표_${d.subjectName}`

@@ -448,6 +448,10 @@ html[data-route="home"] .site-foot {
 .form-sheet .sign-block .line .k { width: 56px; font-weight: 600; }
 .form-sheet .sign-block .fill { display: inline-block; min-width: 72px; }
 .form-sheet .sign-block .fill.name { min-width: 96px; } /* 손으로 이름을 쓸 자리 */
+/* 화면에서 바로 적는 직·성명 칸 — 서식 글자처럼 보이고, 비우면 인쇄에서 빈칸 */
+.form-sheet .sign-block .sign-edit { font: inherit; color: inherit; background: #fff8dc; border: none; border-bottom: 1px dashed #b8a66a; padding: 0 4px; text-align: center; outline: none; }
+.form-sheet .sign-block .sign-edit:focus { background: #fff3bf; border-bottom-color: #8a7a3a; }
+.form-sheet .sign-block .sign-edit::placeholder { color: #b0a888; font-size: 9pt; }
 .form-sheet .footnote { margin-top: 10px; font-size: 10pt; }
 .form-sheet .form-head .sign { display: inline-flex; gap: 6px; align-items: baseline; }
 .form-sheet .form-head .sign .name { min-width: 70px; display: inline-block; text-align: center; }
@@ -754,6 +758,9 @@ label.field.rank-row { flex-direction: row; align-items: center; gap: 10px; marg
   /* 서식이 들어 있지 않은 카드만 숨긴다 */
   .card:not(.print-keep):not(:has(.form-sheet)) { display: none !important; }
   .card { border: none !important; background: none !important; padding: 0 !important; margin: 0 !important; }
+  /* 서명란 입력칸은 적은 글자만 서식 글자처럼 나오고, 비어 있으면 빈칸(안내 글자 없음) */
+  .form-sheet .sign-block .sign-edit { background: none !important; border: none !important; }
+  .form-sheet .sign-block .sign-edit::placeholder { color: transparent !important; }
   .work-layout { display: block !important; }
   /* 화면용 축소를 풀고 원래 크기로 인쇄한다.
      display:contents 로 감싼 상자를 없애야 서식끼리 형제가 되어 쪽 나눔 규칙이 그대로 먹는다 */
