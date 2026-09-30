@@ -274,9 +274,20 @@ export function setRowHeights(xml: string, tableIndex: number, heights: Record<n
 
 /** 표 바깥 문단 중 글자가 `find` 로 시작하는 첫 문단의 글자를 바꾼다 */
 export function replaceParagraph(xml: string, find: string, text: string): string {
+  // 표 안의 문단은 건너뛴다 — 추천 의견이 '교과협의회 …' 로 시작하면 서명줄 대신 그 칸을 덮어쓰던 문제
+  const tables: [number, number][] = []
+  for (let from = 0; ; ) {
+    const a = xml.indexOf('<hp:tbl ', from)
+    if (a < 0) break
+    const b = xml.indexOf('</hp:tbl>', a) + 9
+    tables.push([a, b])
+    from = b
+  }
+  const inTable = (i: number) => tables.some(([a, b]) => i > a && i < b)
   const re = /<hp:p\b[^>]*>(?:(?!<hp:tbl|<\/hp:p>)[\s\S])*?<\/hp:p>/g
   let m: RegExpExecArray | null
   while ((m = re.exec(xml))) {
+    if (inTable(m.index)) continue
     const para = m[0]
     const plain = (para.match(/<hp:t>([\s\S]*?)<\/hp:t>/g) || []).map((t) => t.replace(/<[^>]+>/g, '')).join('')
     if (!plain.replace(/\s/g, '').startsWith(find.replace(/\s/g, ''))) continue

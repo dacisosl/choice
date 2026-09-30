@@ -158,6 +158,8 @@ async function form2(d: Form2Data): Promise<string> {
   for (let i = members.length; i < LIMITS.members; i++) spare.push(1 + i)
   xml = dropColumns(xml, 0, spare, members.map((_, i) => 1 + i))
   xml = scaleTable(xml, 0, TEXT_W.portrait)
+  // 줄을 줄였으니 표 전체 높이도 남은 줄의 합으로 맞춘다 — 원본은 언제나 둘이 같고, 어긋나면 한글이 파일을 못 연다
+  xml = setRowHeights(xml, 0, {})
   xml = replaceParagraph(xml, '과  목', ` 과  목 : ${d.subjectName}`)
   xml = replaceParagraph(xml, '작성자', sign('작성자', BLANK))
   xml = replaceParagraph(xml, '확인자', sign('확인자', BLANK))
