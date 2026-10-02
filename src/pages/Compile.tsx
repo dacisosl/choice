@@ -82,6 +82,55 @@ export function Compile({ go }: { go: (h: string) => void }) {
     commit({ ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) })
   }
 
+  /** 과목 하나를 가리키는 열쇠 (목록 과목은 id, 직접 적은 과목은 띄어쓰기 뺀 이름) */
+  const subjectKey = (id: string, name: string) => (id ? `id:${id}` : name.trim() ? `name:${squeezeName(name)}` : '')
+  /** 지금 올린 위원·총괄표가 어느 과목의 것인가 — 과목이 바뀌면 새 총괄표로 시작하는 데 쓴다 */
+  const workKey = useRef('')
+
+  /**
+   * 새 총괄표로 시작한다. 지금 총괄표는 기다리던 저장을 바로 마쳐 '이 컴퓨터의 총괄표'에 남기고,
+   * 올린 위원·표·추천 의견서는 비운다.
+   */
+  const startFresh = (prevName?: string) => {
+    const cur = latest.current
+    if (saveTimer.current) {
+      window.clearTimeout(saveTimer.current)
+      saveTimer.current = null
+      if (cur) saveSummary(cur).catch((e) => setMsg({ type: 'error', text: `저장 실패: ${e.message}` }))
+    }
+    latest.current = null
+    workKey.current = ''
+    setSum(null)
+    setMembers([])
+    setStep(0)
+    setViewMember(null)
+    setModalRank(null)
+    if (prevName !== undefined) {
+      setMsg({
+        type: 'info',
+        text: cur
+          ? `과목이 바뀌어 새 총괄표로 시작합니다. 앞 과목(${cur.subjectName}) 총괄표는 '이 컴퓨터의 총괄표'에 저장되어 있어 [열기]로 다시 볼 수 있습니다.`
+          : `과목이 바뀌어 새 총괄표로 시작합니다. 앞 과목(${prevName})에 올린 위원 평가표는 비웠습니다.`,
+      })
+    }
+  }
+
+  /** 과목을 바꾼다 — 다른 과목이면 언제나 새 총괄표로 시작한다 (기본값) */
+  const changeSubject = (id: string, name: string) => {
+    const next = subjectKey(id, name)
+    if (next && workKey.current && next !== workKey.current) startFresh(subject?.name || subjectName.trim())
+    setSubjectId(id)
+    setSubjectName(name)
+  }
+  /** 직접 적는 과목명은 다 적고 칸을 벗어날 때 바뀐 것으로 본다 (한 글자 칠 때마다 비우지 않게) */
+  const commitTypedSubject = () => {
+    const next = subjectKey(subjectId, subjectName)
+    if (next && workKey.current && next !== workKey.current) {
+      const prev = latest.current?.subjectName || ''
+      startFresh(prev)
+    }
+  }
+
   /** 위원 한 명이 줄 수 있는 최고 점수 (평가기준 배점의 합, 기본 100) */
   const maxTotal = useMemo(() => {
     const list = criteriaFor(master, sum?.subjectId || subjectId)
@@ -189,6 +238,13 @@ export function Compile({ go }: { go: (h: string) => void }) {
 
   const removeMember = (id: string) => setMembers((prev) => prev.filter((m) => m.id !== id))
 
+  // 위원을 처음 올린 순간의 과목을 기억한다. 위원이 모두 빠지면 잊는다.
+  useEffect(() => {
+    if (!members.length) workKey.current = ''
+    else if (!workKey.current) workKey.current = subjectKey(subjectId, subjectName)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members.length])
+
   /**
    * 올린 위원들의 출판사 합집합 (이름 기준, 먼저 올라온 순서).
    * PDF 에서 읽은 이름은 칸이 좁아 줄이 접히면 띄어쓰기가 사라지므로,
@@ -206,7 +262,17 @@ export function Compile({ go }: { go: (h: string) => void }) {
     return out
   }, [members, master, subjectId])
 
-  const existing = summaries.find((s) => (subjectId ? s.subjectId === subjectId : s.subjectName === subjectName))
+  /** 고른 과목의 저장된 총괄표 중 가장 최근 것 (지금 열려 있는 것은 빼고) — 열지 않으면 새로 만든다 */
+  const savedHere = useMemo(() => {
+    const key = subjectKey(subjectId, subjectName)
+    if (!key) return null
+    return (
+      summaries
+        .filter((s) => s.id !== sum?.id && subjectKey(s.subjectId, s.subjectName) === key)
+        .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))[0] || null
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaries, subjectId, subjectName, sum?.id])
 
   /**
    * 올린 위원들로 총괄표를 만든다 — 위원을 올리거나 뺄 때마다 저절로 다시 만든다.
@@ -216,7 +282,7 @@ export function Compile({ go }: { go: (h: string) => void }) {
     const name = subject?.name || subjectName.trim()
     if (!name || !list.length || !mergedPublishers.length) return
     // 다른 과목으로 바꿨으면 앞 과목의 총괄표를 이어받지 않는다
-    if (base && (base.subjectId || '') !== (subject?.id || '')) base = null
+    if (base && subjectKey(base.subjectId || '', base.subjectName) !== subjectKey(subject?.id || '', name)) base = null
     const same = (a: string, b: string) => squeezeName(a) === squeezeName(b)
     // 출판사 id 는 이름이 같으면 이전 것을 그대로 쓴다 (추천 의견서 순위 연결이 끊기지 않게)
     const publishers = mergedPublishers.map((p) => {
@@ -233,7 +299,8 @@ export function Compile({ go }: { go: (h: string) => void }) {
     }
     const blank: Person = { position: '', name: '' }
     const next: Summary = {
-      id: base?.id || existing?.id || uid(),
+      // 새로 만들면 언제나 새 id — 같은 과목의 저장본을 덮어쓰지 않는다
+      id: base?.id || uid(),
       subjectId: subject?.id || '',
       subjectName: name,
       publishers,
@@ -265,7 +332,13 @@ export function Compile({ go }: { go: (h: string) => void }) {
   }, [members, mergedPublishers, subjectReady])
 
   const loadExisting = (s: Summary) => {
+    if (latest.current && latest.current.id !== s.id && saveTimer.current) {
+      window.clearTimeout(saveTimer.current)
+      saveTimer.current = null
+      saveSummary(latest.current).catch(() => {})
+    }
     latest.current = s
+    workKey.current = subjectKey(s.subjectId, s.subjectName)
     setSum(s)
     setMembers(s.members)
     setSubjectId(s.subjectId)
@@ -274,28 +347,6 @@ export function Compile({ go }: { go: (h: string) => void }) {
     setMsg(null)
   }
 
-  // 저장된 총괄표가 있는 과목을 고르면 이어서 열지 먼저 묻는다 (아직 올린 위원이 없을 때만)
-  const askedFor = useRef('')
-  useEffect(() => {
-    if (!existing || members.length || sum || askedFor.current === existing.id) return
-    askedFor.current = existing.id
-    setNotice({
-      title: '이 과목의 총괄표가 저장되어 있습니다',
-      tone: 'info',
-      lines: [
-        `${existing.subjectName} · 위원 ${existing.members.length}명 · ${fmtDate(existing.updatedAt)} 저장`,
-        '[이어서 열기]를 누르면 저장된 총괄표와 추천 의견서를 그대로 엽니다.',
-        '새로 만들려면 창을 닫고 평가표 PDF를 올리세요. 새 총괄표가 저장본을 대신합니다.',
-      ],
-      confirmLabel: '이어서 열기',
-      onConfirm: () => {
-        setNotice(null)
-        loadExisting(existing)
-      },
-      closeLabel: '새로 만들기',
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing?.id, members.length, sum])
 
   /** 평가 결과(총괄표)에서 1~3순위 자리마다 들어갈 수 있는 출판사 */
   const rankSlots = useMemo(() => {
@@ -511,20 +562,44 @@ export function Compile({ go }: { go: (h: string) => void }) {
                   subjects={master.subjects}
                   value={subjectId}
                   school={school}
-                  onChange={(id) => {
-                    setSubjectId(id)
-                    setSubjectName(master.subjects.find((s) => s.id === id)?.name || '')
-                  }}
+                  onChange={(id) => changeSubject(id, master.subjects.find((s) => s.id === id)?.name || '')}
                 />
               ) : (
-                <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
+                <input
+                  type="text"
+                  value={subjectName}
+                  onChange={(e) => setSubjectName(e.target.value)}
+                  onBlur={commitTypedSubject}
+                  onKeyDown={(e) => e.key === 'Enter' && commitTypedSubject()}
+                  placeholder="예: 세계사"
+                />
               )}
             </div>
             {master.subjects.length > 0 && !subjectId && (
               <label className="field">
                 목록에 없으면 직접 입력
-                <input type="text" value={subjectName} onChange={(e) => setSubjectName(e.target.value)} placeholder="예: 세계사" />
+                <input
+                  type="text"
+                  value={subjectName}
+                  onChange={(e) => setSubjectName(e.target.value)}
+                  onBlur={commitTypedSubject}
+                  onKeyDown={(e) => e.key === 'Enter' && commitTypedSubject()}
+                  placeholder="예: 세계사"
+                />
               </label>
+            )}
+
+            {savedHere && !members.length && (
+              <div className="saved-hint">
+                <span>
+                  이 과목의 저장된 총괄표가 있습니다 <span className="muted">· 위원 {savedHere.members.length}명 · {fmtDate(savedHere.updatedAt)}</span>
+                  <br />
+                  평가표를 올리면 새 총괄표로 만들어집니다.
+                </span>
+                <button className="btn sm" onClick={() => loadExisting(savedHere)}>
+                  열기
+                </button>
+              </div>
             )}
 
             <h3 style={{ marginTop: 16 }}>위원 평가표 ({members.length})</h3>

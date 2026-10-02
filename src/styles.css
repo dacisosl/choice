@@ -516,6 +516,9 @@ html[data-route="home"] .site-foot {
 .check-list summary { cursor: pointer; font-weight: 700; color: #7a5a12; }
 .check-list ul { margin: 8px 0 2px; padding-left: 18px; }
 .check-list li { margin-bottom: 4px; line-height: 1.55; color: var(--text); word-break: keep-all; }
+/* 고른 과목에 저장된 총괄표가 있을 때의 안내 — 열지 않으면 새로 만든다 */
+.saved-hint { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 10px; padding: 8px 10px; border: 1px solid var(--line-card); border-radius: 8px; background: #f6f8f4; font-size: 12.5px; line-height: 1.5; }
+.saved-hint .btn { flex: none; }
 .dropzone.locked { border-style: dotted; background: var(--sur); color: var(--text-2); }
 .dropzone.locked p { margin: 0 0 4px; }
 .dropzone.locked p b { color: var(--title); }
